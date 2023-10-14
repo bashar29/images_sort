@@ -1,0 +1,45 @@
+{
+    // Utilisez IntelliSense pour en savoir plus sur les attributs possibles.
+    // Pointez pour afficher la description des attributs existants.
+    // Pour plus d'informations, visitez : https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'images_sort'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=images_sort",
+                    "--package=images_sort"
+                ],
+                "filter": {
+                    "name": "images_sort",
+                    "kind": "bin"
+                }
+            },
+            "args": ["--dir","."],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'images_sort'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=images_sort",
+                    "--package=images_sort"
+                ],
+                "filter": {
+                    "name": "images_sort",
+                    "kind": "bin"
+                }
+            },
+            "args": ["dir=."],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
