@@ -274,6 +274,7 @@ dependencies = [
  "env_logger",
  "kamadak-exif",
  "log",
+ "once_cell",
  "reverse_geocoder",
 ]
 

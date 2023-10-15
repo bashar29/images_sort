@@ -34,7 +34,10 @@ fn main() {
             return 
         }
     }
-
+    
+    let _ = reverse_gps::LocationsWrapper::init().unwrap();
+    let _ = reverse_gps::ReverseGeocoderWrapper::init().unwrap();
+    
     for dir in &all_directories {
         log::debug!("{:?}", dir);
     
@@ -51,10 +54,9 @@ fn sort_images_of_dir(dir: &std::path::Path) -> Result<(), anyhow::Error> {
         log::error!("failed to get files in dir {:?} : {:?}", dir, e);
         return Err(anyhow!("failed to get files. Error : {}", e)); 
     }
-    let reverse_geocoder = reverse_gps::init_reverse_geocoder();
 
     for file in files {
-        
+
 
     }
 
