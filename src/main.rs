@@ -1,7 +1,9 @@
 use clap::Parser;
+use anyhow::anyhow;
 
 mod directories;
 mod images;
+mod reverse_gps;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -32,8 +34,29 @@ fn main() {
             return 
         }
     }
-    
+
     for dir in &all_directories {
-        log::info!("{:?}", dir);
+        log::debug!("{:?}", dir);
+    
     }
+    
+}
+
+fn sort_images_of_dir(dir: &std::path::Path) -> Result<(), anyhow::Error> {
+    log::trace!("sort_images_of_dir in {:?}", dir);
+
+    let files = directories::get_files_from_dir(dir);
+    
+    if let Err(e) = files {
+        log::error!("failed to get files in dir {:?} : {:?}", dir, e);
+        return Err(anyhow!("failed to get files. Error : {}", e)); 
+    }
+    let reverse_geocoder = reverse_gps::init_reverse_geocoder();
+
+    for file in files {
+        
+
+    }
+
+    Ok(())
 }

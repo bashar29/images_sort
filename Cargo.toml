@@ -11,3 +11,5 @@ clap = { version = "4.4", features = ["derive"] }
 log = "0.4"
 env_logger = "0.10"
 chrono = "0.4"
+anyhow = "1.0"
+reverse_geocoder = "3.0"
