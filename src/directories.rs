@@ -29,7 +29,7 @@ fn get_subdirectories(top_directory: &Path) -> Result<Vec<PathBuf>, io::Error> {
 pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf, io::Error> {
     log::trace!("create_sorted_images_dir in {:?}", top_directory);
     let now = chrono::Local::now();
-    log::debug!("now == {}",now);
+    log::debug!("now == {}", now);
     //let suffix = now.format("%Y%m%d-%H%M%S").to_string();
     let suffix = now.format("%Y%m%d-%H").to_string();
     let dirname = format!("Sorted_Images-{}", suffix);
