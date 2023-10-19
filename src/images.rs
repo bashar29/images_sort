@@ -1,15 +1,33 @@
 use anyhow;
+use regex::Regex;
 use exif::{Exif, In, Tag};
 use std::path::Path;
 
+
 #[derive(Debug)]
 pub struct ExifData {
-    pub year: String,
+    pub year_month: Directory,
     pub gps_lat: String,
     pub gps_long: String,
     pub place: String,
     pub device: String,
 }
+
+#[derive(Debug)]
+pub struct Directory(String);
+impl Directory {
+
+    pub fn parse(s: String) -> Directory {
+        let re = Regex::new(r"\w").unwrap();
+        let clean_string = re.replace_all(&s, "");
+        Self(clean_string.to_string())
+    }
+
+    pub fn get(&self) -> &String {
+        &self.0
+    }
+}
+
 
 pub fn get_exif_data(path: &Path) -> Result<ExifData, anyhow::Error> {
     log::trace!("get_exif_data of {:?}", &path);
@@ -29,7 +47,7 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     log::trace!("analyze_exif_data ...");
 
     let mut exif_data = ExifData {
-        year: String::from("Unknown"),
+        year_month: Directory::parse(String::from("Unknown")),
         place: String::from("Unknown"),
         device: String::from("Unknown"),
         gps_lat: String::from("Unknown"),
@@ -37,9 +55,10 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     };
 
     let date_time = exif.get_field(Tag::DateTimeOriginal, In::PRIMARY);
-    if let Some(year) = date_time {
-        log::debug!("EXIF DateTimeOriginal = {}", year.display_value());
-        exif_data.year = year.display_value().to_string();
+    if let Some(timestamp) = date_time {
+        log::debug!("EXIF DateTimeOriginal = {}", timestamp.display_value());
+        let timestamp_value = timestamp.display_value().to_string();
+        exif_data.year_month = Directory::parse(String::from(&timestamp_value[0..7]));
     } else {
         // TODO exploit DateTimeDigitized
         log::warn!("EXIF DateTimeOriginal tag is missing");

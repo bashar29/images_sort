@@ -78,7 +78,7 @@ fn sort_image_from_exif_data(
         file,
         exif_data
     );
-    let new_directory_path = std::path::Path::new(&exif_data.year);
+    let new_directory_path = std::path::Path::new(exif_data.year_month.get());
     let new_directory_path_buf = directories::create_subdir(target_dir, new_directory_path)?;
     let new_directory_path = std::path::Path::new(&exif_data.place);
     let new_directory_path_buf = directories::create_subdir(&new_directory_path_buf.as_path(), new_directory_path)?;
@@ -86,6 +86,7 @@ fn sort_image_from_exif_data(
     let new_directory_path_buf = directories::create_subdir(&new_directory_path_buf.as_path(), new_directory_path)?;
     
     let mut new_path_name: String = String::from(new_directory_path_buf.to_str().unwrap());
+    new_path_name.push('/');
     new_path_name.push_str(file.file_name().unwrap().to_str().unwrap());
 
     fs::copy(file, std::path::Path::new(&new_path_name))?;
