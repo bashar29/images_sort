@@ -1,5 +1,5 @@
 use once_cell::sync::OnceCell;
-use reverse_geocoder::{Locations, ReverseGeocoder, SearchResult};
+use reverse_geocoder::{Locations, ReverseGeocoder};
 
 static LOCATIONS_WRAPPER: OnceCell<LocationsWrapper> = OnceCell::new();
 static REVERSE_GEOCODER_WRAPPER: OnceCell<ReverseGeocoderWrapper> = OnceCell::new();
@@ -17,7 +17,7 @@ impl LocationsWrapper {
         match LOCATIONS_WRAPPER.set(Self {
             locations: Locations::from_memory(),
         }) {
-            Err(e) => anyhow::bail!("Error initializing Locations"),
+            Err(_e) => anyhow::bail!("Error initializing Locations"),
             _ => Ok(()),
         }
     }
@@ -34,7 +34,7 @@ impl ReverseGeocoderWrapper<'static> {
                 &LocationsWrapper::get_locations_wrapper().locations,
             ),
         }) {
-            Err(e) => anyhow::bail!("Error initializing Reverse Geocoder"),
+            Err(_e) => anyhow::bail!("Error initializing Reverse Geocoder"),
             _ => Ok(()),
         }
     }
@@ -46,7 +46,18 @@ impl ReverseGeocoderWrapper<'static> {
 
 pub fn find_place(lat: &str, long: &str) -> Option<String> {
     log::trace!("find_place {} {}", lat, long);
-    let coords = (lat.parse().unwrap(), long.parse().unwrap());
+
+    let lat_float = match lat.parse::<f64>() {
+        Ok(f) => f,
+        _ => return Some(String::from("Unknown")),
+    };
+    let long_float = match long.parse::<f64>() {
+        Ok(f) => f,
+        _ => return Some(String::from("Unknown")),
+    };
+
+    let coords = (lat_float, long_float);
+
     let search_result = ReverseGeocoderWrapper::get_geocoder_wrapper()
         .reverse_geocoder
         .search(coords)?;

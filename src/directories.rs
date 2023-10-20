@@ -31,8 +31,8 @@ pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf, io::Err
     let now = chrono::Local::now();
     log::debug!("now == {}", now);
     //let suffix = now.format("%Y%m%d-%H%M%S").to_string();
-    let suffix = now.format("%Y%m%d-%H").to_string();
-    let dirname = format!("Sorted_Images-{}", suffix);
+    let suffix = now.format("%Y%m%d-%H%M%S").to_string();
+    let dirname = format!("Images-{}", suffix);
     log::info!("new directory name : {}", dirname);
     let path = top_directory.join(dirname);
     DirBuilder::new().recursive(false).create(&path)?;

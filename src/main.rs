@@ -1,6 +1,6 @@
-use std::fs;
 use clap::Parser;
 use images::ExifData;
+use std::fs;
 
 mod directories;
 mod images;
@@ -14,6 +14,8 @@ struct Args {
     dir: String,
 }
 
+// TODO Args : dest dir
+
 fn main() {
     env_logger::init();
     let args = Args::parse();
@@ -21,34 +23,40 @@ fn main() {
 
     log::info!("Screening directories ...");
     let top_directory = &args.dir;
-    let target_directory = std::path::Path::new(top_directory);
-    let mut all_directories = directories::get_subdirectories_recursive(target_directory).unwrap();
+    let top_directory = std::path::Path::new(top_directory);
+    let mut all_directories = directories::get_subdirectories_recursive(top_directory).unwrap();
     all_directories.push(std::path::PathBuf::from(top_directory));
 
     log::info!("Create target directory ...");
-    let target = directories::create_sorted_images_dir(&target_directory);
+    let target = directories::create_sorted_images_dir(&top_directory);
 
-    match target {
-        Ok(path) => log::info!("target directory is {:?}...", &path),
+    let target = match target {
+        Ok(path) => {
+            log::info!("target directory is {:?}...", &path);
+            path
+        }
         Err(e) => {
             log::error!("target directory creation failed : {:?}", e);
             return;
         }
-    }
+    };
 
     let _ = reverse_gps::LocationsWrapper::init().unwrap();
     let _ = reverse_gps::ReverseGeocoderWrapper::init().unwrap();
 
     for dir in &all_directories {
         log::debug!("{:?}", dir);
-        match sort_images_of_dir(dir, &target_directory) {
+        match sort_images_of_dir(dir, &target) {
             Err(e) => log::error!("Error {} when processing images in {:?}.", e, dir),
             _ => log::info!("Images in {:?} processed...", dir),
         }
     }
 }
 
-fn sort_images_of_dir(dir: &std::path::Path, target_dir: &std::path::Path) -> Result<(), anyhow::Error> {
+fn sort_images_of_dir(
+    dir: &std::path::Path,
+    target_dir: &std::path::Path,
+) -> Result<(), anyhow::Error> {
     log::trace!("sort_images_of_dir in {:?}", dir);
 
     let files = directories::get_files_from_dir(dir)?;
@@ -71,7 +79,7 @@ fn sort_images_of_dir(dir: &std::path::Path, target_dir: &std::path::Path) -> Re
 fn sort_image_from_exif_data(
     file: &std::path::Path,
     exif_data: ExifData,
-    target_dir: &std::path::Path
+    target_dir: &std::path::Path,
 ) -> Result<(), anyhow::Error> {
     log::trace!(
         "sort_image_from_exif_data file: {:?} exif_data: {:?}",
@@ -80,11 +88,13 @@ fn sort_image_from_exif_data(
     );
     let new_directory_path = std::path::Path::new(exif_data.year_month.get());
     let new_directory_path_buf = directories::create_subdir(target_dir, new_directory_path)?;
-    let new_directory_path = std::path::Path::new(&exif_data.place);
-    let new_directory_path_buf = directories::create_subdir(&new_directory_path_buf.as_path(), new_directory_path)?;
-    let new_directory_path = std::path::Path::new(&exif_data.device);
-    let new_directory_path_buf = directories::create_subdir(&new_directory_path_buf.as_path(), new_directory_path)?;
-    
+    let new_directory_path = std::path::Path::new(exif_data.place.get());
+    let new_directory_path_buf =
+        directories::create_subdir(&new_directory_path_buf.as_path(), new_directory_path)?;
+    let new_directory_path = std::path::Path::new(exif_data.device.get());
+    let new_directory_path_buf =
+        directories::create_subdir(&new_directory_path_buf.as_path(), new_directory_path)?;
+
     let mut new_path_name: String = String::from(new_directory_path_buf.to_str().unwrap());
     new_path_name.push('/');
     new_path_name.push_str(file.file_name().unwrap().to_str().unwrap());
