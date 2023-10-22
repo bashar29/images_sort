@@ -1,3 +1,7 @@
+//! # directories
+//!
+//! Functions to manage interactions with the filesystem.
+
 use std::{
     fs::{self, DirBuilder},
     io,
@@ -35,6 +39,7 @@ pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf, io::Err
     let dirname = format!("Images-{}", suffix);
     log::info!("new directory name : {}", dirname);
     let path = top_directory.join(dirname);
+    log::debug!("path of target directory to be created : {:?}", path);
     DirBuilder::new().recursive(false).create(&path)?;
     Ok(path)
 }
@@ -59,7 +64,8 @@ pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>, io::Error> {
 
 #[cfg(test)]
 mod tests {
-    //use super::*;
+    use super::*;
+
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
@@ -67,5 +73,30 @@ mod tests {
     #[test]
     fn test_create_subdir() {
         init();
+        assert_eq!(Path::new("./new_dir").try_exists().unwrap(), false);
+        let result = create_subdir(
+            std::path::Path::new(&String::from("./")),
+            std::path::Path::new(&String::from("new_dir")),
+        );
+        let dir = result.unwrap();
+        assert!(dir.is_dir());
+
+        std::fs::remove_dir(dir.as_path()).unwrap();
+    }
+
+    #[test]
+    fn test_get_files_from_dir() {
+        init();
+        let current_dir = std::env::current_dir().unwrap();
+        std::fs::create_dir("./this_dir").unwrap();
+        std::fs::File::create("./this_dir/foo1.txt").unwrap();
+        std::fs::File::create("./this_dir/foo2.txt").unwrap();
+        std::fs::File::create("./this_dir/foo3.txt").unwrap();
+        let files = get_files_from_dir(std::path::Path::new(&String::from("./this_dir"))).unwrap();
+        assert_eq!(files.len(), 3);
+
+        // ensure we are in the good directory before cleaning this_dir.
+        assert_eq!(current_dir, std::env::current_dir().unwrap());
+        std::fs::remove_dir_all("./this_dir").unwrap();
     }
 }

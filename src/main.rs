@@ -1,36 +1,42 @@
 use clap::Parser;
-use images::ExifData;
+use exif_images::ExifData;
 use std::fs;
 
 mod directories;
-mod images;
-mod reverse_gps;
+mod exif_images;
+mod place_finder;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
-    /// Directory
+    /// Source Directory (where the photos to manage are)
     #[arg(short, long)]
-    dir: String,
+    source_dir: String,
+    /// Destination Directory (where to copy the sorted images). Default : in the source directory
+    #[arg(short, long)]
+    dest_dir: Option<String>,
 }
 
 // TODO Args : dest dir
 // TODO number of images in directories / number of images processed
-
 
 fn main() {
     env_logger::init();
     let args = Args::parse();
     log::info!("Launching image_sort -- args : {:?}", args);
 
-    log::info!("Screening directories ...");
-    let top_directory = &args.dir;
+    log::info!("Screening all directories in source directory ...");
+    let top_directory = &args.source_dir;
     let top_directory = std::path::Path::new(top_directory);
     let mut all_directories = directories::get_subdirectories_recursive(top_directory).unwrap();
     all_directories.push(std::path::PathBuf::from(top_directory));
 
     log::info!("Create target directory ...");
-    let target = directories::create_sorted_images_dir(&top_directory);
+
+    let target = match args.dest_dir {
+        Some(dest_dir) => directories::create_sorted_images_dir(std::path::Path::new(&dest_dir)),
+        None => directories::create_sorted_images_dir(&top_directory),
+    };
 
     let target = match target {
         Ok(path) => {
@@ -43,8 +49,9 @@ fn main() {
         }
     };
 
-    let _ = reverse_gps::LocationsWrapper::init().unwrap();
-    let _ = reverse_gps::ReverseGeocoderWrapper::init().unwrap();
+    // initialisation of reverse geocoder (static variable to avoid multiple loading of data)
+    let _ = place_finder::LocationsWrapper::init().unwrap();
+    let _ = place_finder::ReverseGeocoderWrapper::init().unwrap();
 
     for dir in &all_directories {
         log::debug!("{:?}", dir);
@@ -64,7 +71,7 @@ fn sort_images_of_dir(
     let files = directories::get_files_from_dir(dir)?;
 
     for file in files {
-        let r_exif_data = images::get_exif_data(&file);
+        let r_exif_data = exif_images::get_exif_data(&file);
         match r_exif_data {
             Ok(exif_data) => match sort_image_from_exif_data(&file, exif_data, target_dir) {
                 Ok(()) => log::trace!("Image {:?} processed...", file),

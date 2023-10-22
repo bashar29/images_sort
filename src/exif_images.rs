@@ -1,9 +1,14 @@
+//! # exif_images
+//!
+//! Getting the exif data needed to sort the images.
+//!
+
 use anyhow;
 use exif::{Exif, In, Tag, Value};
 use regex::Regex;
 use std::path::Path;
 
-use crate::reverse_gps;
+use crate::place_finder;
 
 #[derive(Debug)]
 pub struct ExifData {
@@ -14,6 +19,14 @@ pub struct ExifData {
     pub device: Directory,
 }
 
+/// Directory Struct to ensure that only authorized characters in directories names.
+///
+/// # Examples
+/// ```
+/// let dir = Directory::parse(String::from("Cool @name"));
+/// assert_eq!(dir.get(), "Cool  name");
+///
+/// ```
 #[derive(Debug)]
 pub struct Directory(String);
 impl Directory {
@@ -30,6 +43,7 @@ impl Directory {
     }
 }
 
+/// get the exif data needed to sort the file
 pub fn get_exif_data(path: &Path) -> Result<ExifData, anyhow::Error> {
     log::trace!("get_exif_data of {:?}", &path);
     let file = std::fs::File::open(path)?;
@@ -78,15 +92,15 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
         log::debug!("EXIF GPSLatitude = {}", lat.display_value());
         exif_data.gps_lat = match &lat.value {
             Value::Rational(vec_rationals) => {
-                let l = reverse_gps::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
+                let l = place_finder::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
                 let s = lat_ref.unwrap();
                 log::debug!("EXIF GPSLatitudeRef = {}", s.display_value());
                 if s.display_value().to_string() == "N" {
                     l
                 } else {
-                    -1.0*l
+                    -1.0 * l
                 }
-            },
+            }
             _ => 0.0, //TODO
         };
     } else {
@@ -99,23 +113,23 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
         log::debug!("EXIF GPSLongitude = {}", long.display_value());
         exif_data.gps_long = match &long.value {
             Value::Rational(vec_rationals) => {
-                let l = reverse_gps::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
+                let l = place_finder::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
                 let s = long_ref.unwrap();
                 log::debug!("EXIF GPSLongitudeRef = {}", s.display_value());
                 if s.display_value().to_string() == "E" {
                     l
                 } else {
-                    -1.0*l
-                } 
-            },
+                    -1.0 * l
+                }
+            }
             _ => 0.0, //TODO
         };
     } else {
         log::warn!("EXIF GPSLongitude tag is missing");
     }
 
-    if exif_data.gps_lat != 0.0 || exif_data.gps_long != 0.0 { 
-        let place = reverse_gps::find_place(exif_data.gps_lat, exif_data.gps_long);
+    if exif_data.gps_lat != 0.0 || exif_data.gps_long != 0.0 {
+        let place = place_finder::find_place(exif_data.gps_lat, exif_data.gps_long);
         if let Some(place) = place {
             log::debug!("EXIF Place from reverse geocoding = {}", place);
             exif_data.place = Directory::parse(place);
