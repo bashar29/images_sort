@@ -15,6 +15,8 @@ struct Args {
 }
 
 // TODO Args : dest dir
+// TODO number of images in directories / number of images processed
+
 
 fn main() {
     env_logger::init();

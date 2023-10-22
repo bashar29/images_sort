@@ -1,5 +1,5 @@
 use anyhow;
-use exif::{Exif, In, Rational, Tag, Value};
+use exif::{Exif, In, Tag, Value};
 use regex::Regex;
 use std::path::Path;
 
@@ -20,7 +20,7 @@ impl Directory {
     pub fn parse(s: String) -> Directory {
         log::trace!("parse {}", s);
         let re = Regex::new(r"[^\w]").unwrap();
-        let clean_string = re.replace_all(&s, "");
+        let clean_string = re.replace_all(&s, " ");
         log::debug!("clean_string = {}", clean_string);
         Self(clean_string.to_string())
     }
@@ -46,9 +46,9 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     log::trace!("analyze_exif_data ...");
 
     let mut exif_data = ExifData {
-        year_month: Directory::parse(String::from("Unknown")),
-        place: Directory::parse(String::from("Unknown")),
-        device: Directory::parse(String::from("Unknown")),
+        year_month: Directory::parse(String::from("Unknown Date")),
+        place: Directory::parse(String::from("Unknown Place")),
+        device: Directory::parse(String::from("Unknown Device")),
         gps_lat: 0.0,
         gps_long: 0.0,
     };
@@ -71,38 +71,58 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
         log::warn!("EXIF Model tag is missing");
     }
 
+    // https://exiftool.org/TagNames/GPS.html
     let lat = exif.get_field(Tag::GPSLatitude, In::PRIMARY);
+    let lat_ref = exif.get_field(Tag::GPSLatitudeRef, In::PRIMARY);
     if let Some(lat) = lat {
         log::debug!("EXIF GPSLatitude = {}", lat.display_value());
         exif_data.gps_lat = match &lat.value {
             Value::Rational(vec_rationals) => {
-                reverse_gps::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?
-            }
-            _ => 0.0,
+                let l = reverse_gps::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
+                let s = lat_ref.unwrap();
+                log::debug!("EXIF GPSLatitudeRef = {}", s.display_value());
+                if s.display_value().to_string() == "N" {
+                    l
+                } else {
+                    -1.0*l
+                }
+            },
+            _ => 0.0, //TODO
         };
     } else {
         log::warn!("EXIF GPSLatitude tag is missing");
     }
 
     let long = exif.get_field(Tag::GPSLongitude, In::PRIMARY);
+    let long_ref = exif.get_field(Tag::GPSLongitudeRef, In::PRIMARY);
     if let Some(long) = long {
         log::debug!("EXIF GPSLongitude = {}", long.display_value());
         exif_data.gps_long = match &long.value {
             Value::Rational(vec_rationals) => {
-                reverse_gps::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?
-            }
-            _ => 0.0,
+                let l = reverse_gps::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
+                let s = long_ref.unwrap();
+                log::debug!("EXIF GPSLongitudeRef = {}", s.display_value());
+                if s.display_value().to_string() == "E" {
+                    l
+                } else {
+                    -1.0*l
+                } 
+            },
+            _ => 0.0, //TODO
         };
     } else {
         log::warn!("EXIF GPSLongitude tag is missing");
     }
 
-    let place = reverse_gps::find_place(exif_data.gps_lat, exif_data.gps_long);
-    if let Some(place) = place {
-        log::debug!("EXIF Place from reverse geocoding = {}", place);
-        exif_data.place = Directory::parse(place);
-    } else {
-        log::warn!("EXIF no place found");
+    if exif_data.gps_lat != 0.0 || exif_data.gps_long != 0.0 { 
+        let place = reverse_gps::find_place(exif_data.gps_lat, exif_data.gps_long);
+        if let Some(place) = place {
+            log::debug!("EXIF Place from reverse geocoding = {}", place);
+            exif_data.place = Directory::parse(place);
+        } else {
+            log::warn!("EXIF no place found");
+            exif_data.place = Directory::parse(String::from("Unknown Place"));
+        }
     }
 
     Ok(exif_data)

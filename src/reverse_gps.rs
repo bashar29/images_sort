@@ -69,3 +69,20 @@ pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64, 
 
     Ok(deg.unwrap().to_f64() + m + s)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use exif::Rational;
+
+    #[test]
+    fn test_convert_deg_min_sec_to_decimal_deg() {
+        let deg: Rational = Rational { num: 48, denom: 1 };
+        let min: Rational = Rational { num: 5, denom: 1 };
+        let sec: Rational = Rational { num: 92, denom: 2 };
+        assert_eq!(
+            convert_deg_min_sec_to_decimal_deg(&vec![deg, min, sec]).unwrap(),
+            48.096111111111114
+        );
+    }
+}
