@@ -49,13 +49,15 @@ fn main() {
         }
     };
 
+    let unsorted_dir = directories::create_unsorted_images_dir(&target).unwrap();
+
     // initialisation of reverse geocoder (static variable to avoid multiple loading of data)
     let _ = place_finder::LocationsWrapper::init().unwrap();
     let _ = place_finder::ReverseGeocoderWrapper::init().unwrap();
 
     for dir in &all_directories {
         log::debug!("{:?}", dir);
-        match sort_images_of_dir(dir, &target) {
+        match sort_images_of_dir(dir, &target, &unsorted_dir) {
             Err(e) => log::error!("Error {} when processing images in {:?}.", e, dir),
             _ => log::info!("Images in {:?} processed...", dir),
         }
@@ -65,6 +67,7 @@ fn main() {
 fn sort_images_of_dir(
     dir: &std::path::Path,
     target_dir: &std::path::Path,
+    unsorted_images_dir: &std::path::Path,
 ) -> Result<(), anyhow::Error> {
     log::trace!("sort_images_of_dir in {:?}", dir);
 
@@ -78,7 +81,14 @@ fn sort_images_of_dir(
                 Err(e) => log::error!("Error {} when processing image {:?} ...", e, file),
             },
             Err(e) => {
-                log::error!("Error {} when getting exif_data of file {:?}", e, file)
+                log::warn!("Error {:?} when getting exif_data of file {:?}", e, file);
+                match copy_unsorted_image_in_specific_dir(&file, unsorted_images_dir) {
+                    Ok(()) => log::trace!(
+                        "Image {:?} processed (no Exif Data -> copied in unsorted dir)...",
+                        file
+                    ),
+                    Err(e) => log::error!("Error {} when processing image {:?} ...", e, file),
+                }
             }
         }
     }
@@ -110,5 +120,20 @@ fn sort_image_from_exif_data(
 
     fs::copy(file, std::path::Path::new(&new_path_name))?;
 
+    Ok(())
+}
+
+fn copy_unsorted_image_in_specific_dir(
+    file: &std::path::Path,
+    unsorted_dir: &std::path::Path,
+) -> Result<(), anyhow::Error> {
+    log::trace!("copy_unsorted_image_in_specific_dir file: {:?}, unsorted_dir: {:?}", file, unsorted_dir);
+    let mut copied_filename = String::from(unsorted_dir.to_str().unwrap());
+    log::debug!("copied filename: {:?}", copied_filename);
+    copied_filename.push_str(file.to_str().unwrap());
+    log::debug!("file: {:?} ; copied filename: {:?}", file, copied_filename);
+    let copied_file = std::path::Path::new(&copied_filename);
+    fs::DirBuilder::new().recursive(true).create(&copied_file.parent().unwrap())?;
+    fs::copy(file, copied_file)?;
     Ok(())
 }

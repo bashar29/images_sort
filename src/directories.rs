@@ -1,12 +1,14 @@
 //! # directories
 //!
 //! Functions to manage interactions with the filesystem.
-
 use std::{
     fs::{self, DirBuilder},
     io,
     path::{Path, PathBuf},
 };
+
+const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
+const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
 
 pub fn get_subdirectories_recursive(top_directory: &Path) -> Result<Vec<PathBuf>, io::Error> {
     log::trace!("get_subdirectories_recursive of {:?}", top_directory);
@@ -36,12 +38,23 @@ pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf, io::Err
     log::debug!("now == {}", now);
     //let suffix = now.format("%Y%m%d-%H%M%S").to_string();
     let suffix = now.format("%Y%m%d-%H%M%S").to_string();
-    let dirname = format!("Images-{}", suffix);
+    let dirname = format!("{}{}", SORTED_IMAGES_DIRNAME_PREFIX, suffix);
     log::info!("new directory name : {}", dirname);
     let path = top_directory.join(dirname);
     log::debug!("path of target directory to be created : {:?}", path);
     DirBuilder::new().recursive(false).create(&path)?;
     Ok(path)
+}
+
+pub fn create_unsorted_images_dir(parent_directory: &Path) -> Result<PathBuf, io::Error> {
+    log::trace!("create_unsorted_images_dir in {:?}", parent_directory);
+    let unsorted_images_dir = parent_directory.join(std::path::Path::new(&String::from(
+        UNSORTED_IMAGES_SUBDIR_NAME,
+    )));
+    DirBuilder::new()
+        .recursive(true)
+        .create(&unsorted_images_dir)?;
+    Ok(unsorted_images_dir)
 }
 
 pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf, io::Error> {
