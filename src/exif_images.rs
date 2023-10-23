@@ -27,7 +27,7 @@ pub struct ExifData {
 /// assert_eq!(dir.get(), "Cool  name");
 ///
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Directory(String);
 impl Directory {
     pub fn parse(s: String) -> Directory {
@@ -86,6 +86,7 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     }
 
     // https://exiftool.org/TagNames/GPS.html
+    // TODO ensure management of GPSLatitudeRef and GPSLongitudeRef are robust (not sure at the moment)
     let lat = exif.get_field(Tag::GPSLatitude, In::PRIMARY);
     let lat_ref = exif.get_field(Tag::GPSLatitudeRef, In::PRIMARY);
     if let Some(lat) = lat {
@@ -140,6 +141,28 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     }
 
     Ok(exif_data)
+}
+
+mod tests {
+    use super::*;
+
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        // load reverse_geocoder data
+        let _ = place_finder::LocationsWrapper::init().unwrap();
+        let _ = place_finder::ReverseGeocoderWrapper::init().unwrap();
+    }
+
+    #[test]
+    fn test_get_exif_data() {
+        init();
+        let path = std::path::Path::new("DSCN0025.jpg");
+        let exif_data = get_exif_data(path).unwrap();
+        log::debug!("{:?}", exif_data);
+        assert_eq!(exif_data.year_month, Directory::parse("2008 10".to_string()));
+        assert_eq!(exif_data.place, Directory::parse("Arezzo".to_string()));
+        assert_eq!(exif_data.device, Directory::parse(" COOLPIX P6000 ".to_string()));
+    }
 }
 
 // DateTimeOriginal

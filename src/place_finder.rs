@@ -22,7 +22,10 @@ impl LocationsWrapper {
         match LOCATIONS_WRAPPER.set(Self {
             locations: Locations::from_memory(),
         }) {
-            Err(_e) => anyhow::bail!("Error initializing Locations"),
+            Err(_e) => {
+                log::warn!("Error initializing Locations - OnceCell was not empty");
+                Ok(())
+            }
             _ => Ok(()),
         }
     }
@@ -39,7 +42,10 @@ impl ReverseGeocoderWrapper<'static> {
                 &LocationsWrapper::get_locations_wrapper().locations,
             ),
         }) {
-            Err(_e) => anyhow::bail!("Error initializing Reverse Geocoder"),
+            Err(_e) => {
+                log::warn!("Error initializing Reverse Geocoder - OnceCell was not empty");
+                Ok(())
+            }
             _ => Ok(()),
         }
     }
