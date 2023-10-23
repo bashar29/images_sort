@@ -19,6 +19,7 @@ struct Args {
 
 // TODO Args : dest dir
 // TODO number of images in directories / number of images processed
+// TODO device directory as an option
 
 fn main() {
     env_logger::init();
@@ -57,14 +58,14 @@ fn main() {
 
     for dir in &all_directories {
         log::debug!("{:?}", dir);
-        match sort_images_of_dir(dir, &target, &unsorted_dir) {
+        match sort_images_in_dir(dir, &target, &unsorted_dir) {
             Err(e) => log::error!("Error {} when processing images in {:?}.", e, dir),
             _ => log::info!("Images in {:?} processed...", dir),
         }
     }
 }
 
-fn sort_images_of_dir(
+fn sort_images_in_dir(
     dir: &std::path::Path,
     target_dir: &std::path::Path,
     unsorted_images_dir: &std::path::Path,
@@ -127,13 +128,19 @@ fn copy_unsorted_image_in_specific_dir(
     file: &std::path::Path,
     unsorted_dir: &std::path::Path,
 ) -> Result<(), anyhow::Error> {
-    log::trace!("copy_unsorted_image_in_specific_dir file: {:?}, unsorted_dir: {:?}", file, unsorted_dir);
+    log::trace!(
+        "copy_unsorted_image_in_specific_dir file: {:?}, unsorted_dir: {:?}",
+        file,
+        unsorted_dir
+    );
     let mut copied_filename = String::from(unsorted_dir.to_str().unwrap());
     log::debug!("copied filename: {:?}", copied_filename);
     copied_filename.push_str(file.to_str().unwrap());
     log::debug!("file: {:?} ; copied filename: {:?}", file, copied_filename);
     let copied_file = std::path::Path::new(&copied_filename);
-    fs::DirBuilder::new().recursive(true).create(&copied_file.parent().unwrap())?;
+    fs::DirBuilder::new()
+        .recursive(true)
+        .create(&copied_file.parent().unwrap())?;
     fs::copy(file, copied_file)?;
     Ok(())
 }
