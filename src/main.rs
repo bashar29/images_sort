@@ -5,6 +5,7 @@ use std::fs;
 mod directories;
 mod exif_images;
 mod place_finder;
+mod reporting;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -53,8 +54,8 @@ fn main() {
     let unsorted_dir = directories::create_unsorted_images_dir(&target).unwrap();
 
     // initialisation of reverse geocoder (static variable to avoid multiple loading of data)
-    let _ = place_finder::LocationsWrapper::init().unwrap();
-    let _ = place_finder::ReverseGeocoderWrapper::init().unwrap();
+    let _ = place_finder::LocationsWrapper::init();
+    let _ = place_finder::ReverseGeocoderWrapper::init();
 
     for dir in &all_directories {
         log::debug!("{:?}", dir);

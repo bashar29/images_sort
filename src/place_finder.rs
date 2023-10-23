@@ -18,15 +18,15 @@ pub struct LocationsWrapper {
 }
 
 impl LocationsWrapper {
-    pub fn init() -> Result<(), anyhow::Error> {
+    pub fn init() -> () {
         match LOCATIONS_WRAPPER.set(Self {
             locations: Locations::from_memory(),
         }) {
             Err(_e) => {
                 log::warn!("Error initializing Locations - OnceCell was not empty");
-                Ok(())
+                ()
             }
-            _ => Ok(()),
+            _ => (),
         }
     }
 
@@ -36,7 +36,7 @@ impl LocationsWrapper {
 }
 
 impl ReverseGeocoderWrapper<'static> {
-    pub fn init() -> Result<(), anyhow::Error> {
+    pub fn init() -> () {
         match REVERSE_GEOCODER_WRAPPER.set(Self {
             reverse_geocoder: ReverseGeocoder::new(
                 &LocationsWrapper::get_locations_wrapper().locations,
@@ -44,9 +44,9 @@ impl ReverseGeocoderWrapper<'static> {
         }) {
             Err(_e) => {
                 log::warn!("Error initializing Reverse Geocoder - OnceCell was not empty");
-                Ok(())
+                ()
             }
-            _ => Ok(()),
+            _ => (),
         }
     }
 
@@ -94,8 +94,8 @@ mod tests {
 
     // load reverse_geocoder data
     fn load_data() {
-        let _ = LocationsWrapper::init().unwrap();
-        let _ = ReverseGeocoderWrapper::init().unwrap();
+        let _ = LocationsWrapper::init();
+        let _ = ReverseGeocoderWrapper::init();
     }
 
     #[test]

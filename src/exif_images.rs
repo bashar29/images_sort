@@ -143,14 +143,15 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     Ok(exif_data)
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
         // load reverse_geocoder data
-        let _ = place_finder::LocationsWrapper::init().unwrap();
-        let _ = place_finder::ReverseGeocoderWrapper::init().unwrap();
+        let _ = place_finder::LocationsWrapper::init();
+        let _ = place_finder::ReverseGeocoderWrapper::init();
     }
 
     #[test]
