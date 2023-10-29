@@ -149,8 +149,8 @@ mod tests {
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
         // load reverse_geocoder data
-        let _ = place_finder::LocationsWrapper::init();
-        let _ = place_finder::ReverseGeocoderWrapper::init();
+        //place_finder::LocationsWrapper::init();
+        //place_finder::ReverseGeocoderWrapper::init();
     }
 
     #[test]

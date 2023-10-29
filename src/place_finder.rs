@@ -18,41 +18,22 @@ pub struct LocationsWrapper {
 }
 
 impl LocationsWrapper {
-    pub fn init() {
-        // match LOCATIONS_WRAPPER.set(Self {
-        //     locations: Locations::from_memory(),
-        // }) {
-        //     Err(_e) => {
-        //         log::warn!("Error initializing Locations - OnceCell was not empty");
-        //         ()
-        //     }
-        //     _ => (),
-        //}
-        if let Err(_e) = LOCATIONS_WRAPPER.set(Self {
-            locations: Locations::from_memory(),
-        }) {
-            log::warn!("Error initializing Locations - OnceCell was not empty");
-        }
-    }
-
     pub fn get_locations_wrapper() -> &'static LocationsWrapper {
-        LOCATIONS_WRAPPER.get().unwrap()
+        log::trace!("LocationsWrapper::get_locations_wrapper()");
+        LOCATIONS_WRAPPER.get_or_init(|| Self {
+            locations: Locations::from_memory(),
+        })
     }
 }
 
 impl ReverseGeocoderWrapper<'static> {
-    pub fn init() {
-        if let Err(_e) = REVERSE_GEOCODER_WRAPPER.set(Self {
+    pub fn get_geocoder_wrapper() -> &'static ReverseGeocoderWrapper<'static> {
+        log::trace!("ReverseGeocoderWrapper::get_geocoder_wrapper()");
+        REVERSE_GEOCODER_WRAPPER.get_or_init(|| Self {
             reverse_geocoder: ReverseGeocoder::new(
                 &LocationsWrapper::get_locations_wrapper().locations,
             ),
-        }) {
-            log::warn!("Error initializing Reverse Geocoder - OnceCell was not empty");
-        }
-    }
-
-    pub fn get_geocoder_wrapper() -> &'static ReverseGeocoderWrapper<'static> {
-        REVERSE_GEOCODER_WRAPPER.get().unwrap()
+        })
     }
 }
 
@@ -72,6 +53,7 @@ pub fn find_place(lat: f64, long: f64) -> Option<String> {
 // conversion
 // https://www.fcc.gov/media/radio/dms-decimal
 // https://www.rapidtables.com/convert/number/degrees-minutes-seconds-to-degrees.html
+// TODO suppress unwrap() occurence and check ok_or(0) impacts. Manage input formats errors
 pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64> {
     log::trace!("convert_deg_min_sec_to_decimal_deg {:?}", coord);
     let deg = coord.get(0).ok_or(0).map_err(Box::from);
@@ -95,8 +77,9 @@ mod tests {
 
     // load reverse_geocoder data
     fn load_data() {
-        let _ = LocationsWrapper::init();
-        let _ = ReverseGeocoderWrapper::init();
+        // TODO tests are multithread. So init() could be called twice -> manage with a test on get()
+        //LocationsWrapper::init();
+        //ReverseGeocoderWrapper::init();
     }
 
     #[test]

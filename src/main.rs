@@ -45,7 +45,10 @@ fn main() {
             path
         }
         Err(e) => {
-            log::error!("target directory creation failed : {:?}", e);
+            log::error!(
+                "target directory creation failed : {:?}, ending execution",
+                e
+            );
             return;
         }
     };
@@ -53,26 +56,18 @@ fn main() {
     let unsorted_dir = directories::create_unsorted_images_dir(&target).unwrap();
 
     // initialisation of reverse geocoder (static variable to avoid multiple loading of data)
-    place_finder::LocationsWrapper::init();
-    place_finder::ReverseGeocoderWrapper::init();
+    //place_finder::LocationsWrapper::init();
+    //place_finder::ReverseGeocoderWrapper::init();
 
     for dir in &all_directories {
         log::debug!("{:?}", dir);
         match images_manager::sort_images_in_dir(dir, &target, &unsorted_dir) {
-            Err(e) => log::error!("Error {} when processing images in {:?}.", e, dir),
+            Err(e) => log::error!(
+                "Unexpected error {} when processing images in {:?}.",
+                e,
+                dir
+            ),
             _ => log::info!("Images in {:?} processed...", dir),
         }
     }
 }
-
-// #[derive(thiserror::Error, Debug)]
-// pub enum ImagesSortError {
-//     #[error("{0}")]
-//     Message(String),
-//     // a central IO wrapper
-//     #[error(transparent)]
-//     IO(#[from] std::io::Error),
-//     // will be used with `.map_err(Box::from)?;`
-//     #[error(transparent)]
-//     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
-// }

@@ -9,18 +9,13 @@ pub struct Reporting {
 }
 
 impl Reporting {
-    pub fn init() {
-        if REPORTING_WRAPPER.set(Self {
+
+    pub fn get() -> &'static Reporting {
+        REPORTING_WRAPPER.get_or_init(|| Self {
             nb_images: 0,
             nb_sorted_images: 0,
             nb_unsorted_images: 0,
-        }).is_err() {
-            log::warn!("Error initializing REPORTING_WRAPPER (already filled)");
-        }
-    }
-
-    pub fn get() -> &'static Reporting {
-        REPORTING_WRAPPER.get().unwrap()
+        })
     }
 
     pub fn image_processed_sorted(&mut self) {
