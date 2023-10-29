@@ -28,11 +28,21 @@ fn main() {
     env_logger::init();
     let args = Args::parse();
     log::info!("Launching image_sort -- args : {:?}", args);
-
-    log::info!("Screening all directories in source directory ...");
+    
+    println!("Screening all directories in source directory ...");
+    
     let top_directory = &args.source_dir;
     let top_directory = std::path::Path::new(top_directory);
-    let mut all_directories = directories::get_subdirectories_recursive(top_directory).unwrap();
+    //let mut all_directories = directories::get_subdirectories_recursive(top_directory).unwrap();
+    let mut all_directories = match directories::get_subdirectories_recursive(top_directory) {
+        Ok(d) => d,
+        Err(e) => {
+            log::error!("Error {:?} when listing all subdirectories from {:?}", e, top_directory);
+            eprintln!("Error : {} when listing all subdirectories from {}", e, top_directory.display());
+            std::process::exit(1)
+        }
+    };
+    
     all_directories.push(std::path::PathBuf::from(top_directory));
 
     log::info!("Create target directory ...");

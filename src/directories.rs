@@ -6,6 +6,7 @@ use std::{
     io,
     path::{Path, PathBuf},
 };
+use eyre::Result;
 
 // TODO : check IO Error bubbling
 
@@ -13,7 +14,7 @@ const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
 const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
 
 /// Get all subdirectories of a directory, recursively dig in all directories
-pub fn get_subdirectories_recursive(top_directory: &Path) -> Result<Vec<PathBuf>, io::Error> {
+pub fn get_subdirectories_recursive(top_directory: &Path) -> Result<Vec<PathBuf>> {
     log::trace!("get_subdirectories_recursive of {:?}", top_directory);
     let directories: Vec<PathBuf> = Vec::new();
     let sub_dir = get_subdirectories(top_directory)?;
@@ -25,7 +26,7 @@ pub fn get_subdirectories_recursive(top_directory: &Path) -> Result<Vec<PathBuf>
     Ok(directories)
 }
 
-fn get_subdirectories(top_directory: &Path) -> Result<Vec<PathBuf>, io::Error> {
+fn get_subdirectories(top_directory: &Path) -> Result<Vec<PathBuf>> {
     log::trace!("get_subdirectories of {:?}", top_directory);
     Ok(fs::read_dir(top_directory)?
         .filter(|r| r.is_ok())
@@ -36,7 +37,7 @@ fn get_subdirectories(top_directory: &Path) -> Result<Vec<PathBuf>, io::Error> {
 
 /// Create the directory where the sorted images will be copied.
 /// The name will embed info of the timestamp of the creation.
-pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf, io::Error> {
+pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf> {
     log::trace!("create_sorted_images_dir in {:?}", top_directory);
     let now = chrono::Local::now();
     log::debug!("now == {}", now);
@@ -52,7 +53,7 @@ pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf, io::Err
 
 /// Create the directory where images that couldn't be sorted (because they lack of EXIF Data)
 /// will be copied
-pub fn create_unsorted_images_dir(parent_directory: &Path) -> Result<PathBuf, io::Error> {
+pub fn create_unsorted_images_dir(parent_directory: &Path) -> Result<PathBuf> {
     log::trace!("create_unsorted_images_dir in {:?}", parent_directory);
     let unsorted_images_dir = parent_directory.join(std::path::Path::new(&String::from(
         UNSORTED_IMAGES_SUBDIR_NAME,
@@ -63,7 +64,7 @@ pub fn create_unsorted_images_dir(parent_directory: &Path) -> Result<PathBuf, io
     Ok(unsorted_images_dir)
 }
 
-pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf, io::Error> {
+pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf> {
     log::trace!("create_subdir in {:?}", parent_directory);
     let new_dir = parent_directory.join(sub_dir);
     DirBuilder::new().recursive(true).create(&new_dir)?;
@@ -72,7 +73,7 @@ pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf,
 }
 
 /// Return a Vec containing all FILES contained in a directory
-pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>, io::Error> {
+pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     log::trace!("get_images_from_dir in {:?}", dir);
     Ok(fs::read_dir(dir)?
         .filter(|r| r.is_ok())
