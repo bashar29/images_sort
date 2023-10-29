@@ -3,7 +3,6 @@
 //! Getting the exif data needed to sort the images.
 //!
 
-use anyhow;
 use exif::{Exif, In, Tag, Value};
 use regex::Regex;
 use std::path::Path;
@@ -44,7 +43,7 @@ impl Directory {
 }
 
 /// get the exif data needed to sort the file
-pub fn get_exif_data(path: &Path) -> Result<ExifData, anyhow::Error> {
+pub fn get_exif_data(path: &Path) -> Result<ExifData, eyre::Error> {
     log::trace!("get_exif_data of {:?}", &path);
     let file = std::fs::File::open(path)?;
     let mut bufreader = std::io::BufReader::new(file);
@@ -56,7 +55,7 @@ pub fn get_exif_data(path: &Path) -> Result<ExifData, anyhow::Error> {
     Ok(exif_data)
 }
 
-fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
+fn analyze_exif_data(exif: Exif) -> Result<ExifData, eyre::Error> {
     log::trace!("analyze_exif_data ...");
 
     let mut exif_data = ExifData {
@@ -80,7 +79,7 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
     let device = exif.get_field(Tag::Model, In::PRIMARY);
     if let Some(model) = device {
         log::debug!("EXIF Model = {}", model.display_value());
-        exif_data.device = Directory::parse(String::from(model.display_value().to_string()));
+        exif_data.device = Directory::parse(model.display_value().to_string());
     } else {
         log::warn!("EXIF Model tag is missing");
     }
@@ -93,7 +92,7 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
         log::debug!("EXIF GPSLatitude = {}", lat.display_value());
         exif_data.gps_lat = match &lat.value {
             Value::Rational(vec_rationals) => {
-                let l = place_finder::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
+                let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
                 let s = lat_ref.unwrap();
                 log::debug!("EXIF GPSLatitudeRef = {}", s.display_value());
                 if s.display_value().to_string() == "N" {
@@ -114,7 +113,7 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, anyhow::Error> {
         log::debug!("EXIF GPSLongitude = {}", long.display_value());
         exif_data.gps_long = match &long.value {
             Value::Rational(vec_rationals) => {
-                let l = place_finder::convert_deg_min_sec_to_decimal_deg(&vec_rationals)?;
+                let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
                 let s = long_ref.unwrap();
                 log::debug!("EXIF GPSLongitudeRef = {}", s.display_value());
                 if s.display_value().to_string() == "E" {
@@ -160,9 +159,15 @@ mod tests {
         let path = std::path::Path::new("DSCN0025.jpg");
         let exif_data = get_exif_data(path).unwrap();
         log::debug!("{:?}", exif_data);
-        assert_eq!(exif_data.year_month, Directory::parse("2008 10".to_string()));
+        assert_eq!(
+            exif_data.year_month,
+            Directory::parse("2008 10".to_string())
+        );
         assert_eq!(exif_data.place, Directory::parse("Arezzo".to_string()));
-        assert_eq!(exif_data.device, Directory::parse(" COOLPIX P6000 ".to_string()));
+        assert_eq!(
+            exif_data.device,
+            Directory::parse(" COOLPIX P6000 ".to_string())
+        );
     }
 }
 

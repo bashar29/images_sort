@@ -26,7 +26,7 @@ pub fn get_subdirectories_recursive(top_directory: &Path) -> Result<Vec<PathBuf>
 fn get_subdirectories(top_directory: &Path) -> Result<Vec<PathBuf>, io::Error> {
     log::trace!("get_subdirectories of {:?}", top_directory);
     Ok(fs::read_dir(top_directory)?
-        .into_iter()
+        //.into_iter()
         .filter(|r| r.is_ok())
         .map(|r| r.unwrap().path())
         .filter(|r| r.is_dir())
@@ -74,7 +74,7 @@ pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf,
 pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>, io::Error> {
     log::trace!("get_images_from_dir in {:?}", dir);
     Ok(fs::read_dir(dir)?
-        .into_iter()
+        //.into_iter()
         .filter(|r| r.is_ok())
         .map(|r| r.unwrap().path())
         .filter(|r| r.is_file())

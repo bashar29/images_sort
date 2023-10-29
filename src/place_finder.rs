@@ -1,7 +1,7 @@
 //! reverse_gps
 //! leverage reverse_geocoder crate to get the nearest place (town) of the GPS data we got from an image.
-
 use exif::Rational;
+use eyre::Result;
 use once_cell::sync::OnceCell;
 use reverse_geocoder::{Locations, ReverseGeocoder};
 
@@ -18,15 +18,20 @@ pub struct LocationsWrapper {
 }
 
 impl LocationsWrapper {
-    pub fn init() -> () {
-        match LOCATIONS_WRAPPER.set(Self {
+    pub fn init() {
+        // match LOCATIONS_WRAPPER.set(Self {
+        //     locations: Locations::from_memory(),
+        // }) {
+        //     Err(_e) => {
+        //         log::warn!("Error initializing Locations - OnceCell was not empty");
+        //         ()
+        //     }
+        //     _ => (),
+        //}
+        if let Err(_e) = LOCATIONS_WRAPPER.set(Self {
             locations: Locations::from_memory(),
         }) {
-            Err(_e) => {
-                log::warn!("Error initializing Locations - OnceCell was not empty");
-                ()
-            }
-            _ => (),
+            log::warn!("Error initializing Locations - OnceCell was not empty");
         }
     }
 
@@ -36,17 +41,13 @@ impl LocationsWrapper {
 }
 
 impl ReverseGeocoderWrapper<'static> {
-    pub fn init() -> () {
-        match REVERSE_GEOCODER_WRAPPER.set(Self {
+    pub fn init() {
+        if let Err(_e) = REVERSE_GEOCODER_WRAPPER.set(Self {
             reverse_geocoder: ReverseGeocoder::new(
                 &LocationsWrapper::get_locations_wrapper().locations,
             ),
         }) {
-            Err(_e) => {
-                log::warn!("Error initializing Reverse Geocoder - OnceCell was not empty");
-                ()
-            }
-            _ => (),
+            log::warn!("Error initializing Reverse Geocoder - OnceCell was not empty");
         }
     }
 
@@ -71,11 +72,11 @@ pub fn find_place(lat: f64, long: f64) -> Option<String> {
 // conversion
 // https://www.fcc.gov/media/radio/dms-decimal
 // https://www.rapidtables.com/convert/number/degrees-minutes-seconds-to-degrees.html
-pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64, anyhow::Error> {
+pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64> {
     log::trace!("convert_deg_min_sec_to_decimal_deg {:?}", coord);
-    let deg = coord.get(0).ok_or_else(|| 0);
-    let min = coord.get(1).ok_or_else(|| 0);
-    let sec = coord.get(2).ok_or_else(|| 0);
+    let deg = coord.get(0).ok_or(0).map_err(Box::from);
+    let min = coord.get(1).ok_or(0).map_err(Box::from);
+    let sec = coord.get(2).ok_or(0).map_err(Box::from);
 
     let m = min.unwrap().to_f64() / 60.0;
     let s = sec.unwrap().to_f64() / 3600.0;

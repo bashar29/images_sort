@@ -9,18 +9,13 @@ pub struct Reporting {
 }
 
 impl Reporting {
-
-    pub fn init() -> () {
-        match REPORTING_WRAPPER.set(Self {
+    pub fn init() {
+        if REPORTING_WRAPPER.set(Self {
             nb_images: 0,
             nb_sorted_images: 0,
-            nb_unsorted_images: 0
-        }) {
-            Err(_) => {
-                log::warn!("Error initializing REPORTING_WRAPPER (already filled)");
-                ()
-            }
-            _ => () 
+            nb_unsorted_images: 0,
+        }).is_err() {
+            log::warn!("Error initializing REPORTING_WRAPPER (already filled)");
         }
     }
 
@@ -32,7 +27,7 @@ impl Reporting {
         self.nb_images += 1;
         self.nb_sorted_images += 1;
     }
-    
+
     pub fn image_processed_unsorted(&mut self) {
         self.nb_images += 1;
         self.nb_unsorted_images += 1;
@@ -43,5 +38,4 @@ impl Reporting {
         println!("number of images sorted : {}", self.nb_sorted_images);
         println!("number of images not sorted : {}", self.nb_unsorted_images);
     }
-
 }
