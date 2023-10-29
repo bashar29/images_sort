@@ -75,13 +75,6 @@ mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
-    // load reverse_geocoder data
-    fn load_data() {
-        // TODO tests are multithread. So init() could be called twice -> manage with a test on get()
-        //LocationsWrapper::init();
-        //ReverseGeocoderWrapper::init();
-    }
-
     #[test]
     fn test_convert_deg_min_sec_to_decimal_deg() {
         init();
@@ -97,7 +90,6 @@ mod tests {
     #[test]
     fn test_find_place() {
         init();
-        load_data();
         let lat = 48.083328;
         let long = -1.68333;
         let rennes = find_place(lat, long);

@@ -7,6 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// TODO : check IO Error bubbling
+
 const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
 const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
 

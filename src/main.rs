@@ -15,11 +15,14 @@ struct Args {
     /// Destination Directory (where to copy the sorted images). Default : in the source directory
     #[arg(short, long)]
     dest_dir: Option<String>,
+    /// Use Device (Camera Model) to sort
+    #[arg(short, long)]
+    use_device: Option<bool>,// TODO use it
 }
 
-// TODO Args : dest dir
+
 // TODO number of images in directories / number of images processed
-// TODO device directory as an option
+
 
 fn main() {
     env_logger::init();
