@@ -4,7 +4,7 @@
 //!
 
 use crate::place_finder;
-use exif::{Exif, In, Tag, Value};
+use exif::{Exif, In, Tag, Value, Field};
 use regex::Regex;
 use std::path::Path;
 
@@ -86,23 +86,17 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
         gps_long: 0.0,
     };
 
-    let date_time = exif.get_field(Tag::DateTimeOriginal, In::PRIMARY);
-    if let Some(timestamp) = date_time {
-        log::debug!("EXIF DateTimeOriginal = {}", timestamp.display_value());
-        let timestamp_value = timestamp.display_value().to_string();
-        exif_data.year_month = Directory::parse(String::from(&timestamp_value[0..7]));
+    let date_time_original = exif.get_field(Tag::DateTimeOriginal, In::PRIMARY);
+    let date_time_digitized = exif.get_field(Tag::DateTimeDigitized, In::PRIMARY);
+    if let Some(timestamp) = analyze_exif_datetime(date_time_original) {
+        exif_data.year_month = timestamp;    
     } else {
-        // TODO exploit DateTimeDigitized
         log::warn!("EXIF DateTimeOriginal tag is missing - trying DateTimeDigitized");
-        let date_time = exif.get_field(Tag::DateTimeDigitized, In::PRIMARY);
-        if let Some(timestamp) = date_time {
-            log::debug!("EXIF DateTimeDigitized = {}", timestamp.display_value());
-            let timestamp_value = timestamp.display_value().to_string();
-            exif_data.year_month = Directory::parse(String::from(&timestamp_value[0..7]));
-        } else {
-            // TODO exploit DateTimeDigitized
+        if let Some(timestamp) = analyze_exif_datetime(date_time_digitized) {
+            exif_data.year_month = timestamp;
+        }
+        else {
             log::warn!("both EXIF DateTimeOriginal and DateTimeDigitized tag are missing");
-            
         }
     }
 
@@ -130,15 +124,19 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
                     }
                 };
 
-                let s = lat_ref.unwrap(); // TODO
-                log::debug!("EXIF GPSLatitudeRef = {}", s.display_value());
-                if s.display_value().to_string() == "N" {
-                    l
-                } else {
-                    -1.0 * l
+                match lat_ref {
+                    Some(v) => {
+                        log::debug!("EXIF GPSLatitudeRef = {}", v.display_value());
+                        if v.display_value().to_string() == "N" {
+                            l
+                        } else {
+                            -1.0 * l
+                        }
+                    },
+                    None => 0.0,
                 }
             }
-            _ => 0.0, //TODO
+            _ => 0.0,
         };
     } else {
         log::warn!("EXIF GPSLatitude tag is missing");
@@ -157,16 +155,20 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
                         return Err(ExifError::Decoding(coords))
                     }
                 };
-
-                let s = long_ref.unwrap(); //TODO
-                log::debug!("EXIF GPSLongitudeRef = {}", s.display_value());
-                if s.display_value().to_string() == "E" {
-                    l
-                } else {
-                    -1.0 * l
+                
+                match long_ref {
+                    Some(v) => {
+                        log::debug!("EXIF GPSLongitudeRef = {}", v.display_value());
+                        if v.display_value().to_string() == "E" {
+                            l
+                        } else {
+                            -1.0 * l
+                        }
+                    },
+                    None => 0.0,
                 }
             }
-            _ => 0.0, //TODO
+            _ => 0.0,
         };
     } else {
         log::warn!("EXIF GPSLongitude tag is missing");
@@ -181,10 +183,25 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
             log::warn!("EXIF no place found");
             exif_data.place = Directory::parse(String::from("Unknown Place"));
         }
+    } else {
+        exif_data.place = Directory::parse(String::from("Null_Island"));
+        // https://fr.wikipedia.org/wiki/Null_Island
     }
 
     Ok(exif_data)
 }
+
+fn analyze_exif_datetime(date_time: Option<&Field>) -> Option<Directory> {
+    log::trace!("analyze_exif_datetime {:?}", date_time);
+    if let Some(timestamp) = date_time {
+        log::debug!("EXIF DateTime*** = {}", timestamp.display_value());
+        let timestamp_value = timestamp.display_value().to_string();
+        Some(Directory::parse(String::from(&timestamp_value[0..7])))
+    } else {
+        None
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -22,8 +22,6 @@ struct Args {
     use_device: Option<bool>, // TODO use it
 }
 
-// TODO number of images in directories / number of images processed
-
 fn main() {
     env_logger::init();
     let args = Args::parse();
