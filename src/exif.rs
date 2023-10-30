@@ -3,11 +3,10 @@
 //! Getting the exif data needed to sort the images.
 //!
 
+use crate::place_finder;
 use exif::{Exif, In, Tag, Value};
 use regex::Regex;
 use std::path::Path;
-
-use crate::place_finder;
 
 #[derive(Debug)]
 pub struct ExifData {
@@ -16,6 +15,18 @@ pub struct ExifData {
     pub gps_long: f64,
     pub place: Directory,
     pub device: Directory,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ExifError {
+    #[error("No Exif Data in the image")]
+    NoExifData,
+    #[error("The file processed is not an image {0}")]
+    NotImageFile(String),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error("Coords {0} can't be processed")]
+    Decoding(String),
 }
 
 /// Directory Struct to ensure that only authorized characters in directories names.
@@ -43,19 +54,28 @@ impl Directory {
 }
 
 /// get the exif data needed to sort the file
-pub fn get_exif_data(path: &Path) -> Result<ExifData, eyre::Error> {
+pub fn get_exif_data(path: &Path) -> Result<ExifData, ExifError> {
     log::trace!("get_exif_data of {:?}", &path);
     let file = std::fs::File::open(path)?;
     let mut bufreader = std::io::BufReader::new(file);
     let exifreader = exif::Reader::new();
-    let exif = exifreader.read_from_container(&mut bufreader)?;
+
+    //let exif = exifreader.read_from_container(&mut bufreader)?;
+    let exif = match exifreader.read_from_container(&mut bufreader) {
+        Ok(exif) => exif,
+        Err(e) => match e {
+            exif::Error::Io(io) => return Err(ExifError::IO(io)),
+            exif::Error::InvalidFormat(s) => return Err(ExifError::NotImageFile(s.to_string())),
+            _ => return Err(ExifError::NoExifData),
+        },
+    };
 
     let exif_data = analyze_exif_data(exif)?;
 
     Ok(exif_data)
 }
 
-fn analyze_exif_data(exif: Exif) -> Result<ExifData, eyre::Error> {
+fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
     log::trace!("analyze_exif_data ...");
 
     let mut exif_data = ExifData {
@@ -92,8 +112,15 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, eyre::Error> {
         log::debug!("EXIF GPSLatitude = {}", lat.display_value());
         exif_data.gps_lat = match &lat.value {
             Value::Rational(vec_rationals) => {
-                let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
-                let s = lat_ref.unwrap();
+                //let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
+                let l = match place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals) {
+                    Ok(l) => l,
+                    Err(place_finder::PlaceFinderError::Decode(coords)) => {
+                        return Err(ExifError::Decoding(coords))
+                    }
+                };
+
+                let s = lat_ref.unwrap(); // TODO
                 log::debug!("EXIF GPSLatitudeRef = {}", s.display_value());
                 if s.display_value().to_string() == "N" {
                     l
@@ -113,8 +140,15 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, eyre::Error> {
         log::debug!("EXIF GPSLongitude = {}", long.display_value());
         exif_data.gps_long = match &long.value {
             Value::Rational(vec_rationals) => {
-                let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
-                let s = long_ref.unwrap();
+                //let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
+                let l = match place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals) {
+                    Ok(l) => l,
+                    Err(place_finder::PlaceFinderError::Decode(coords)) => {
+                        return Err(ExifError::Decoding(coords))
+                    }
+                };
+
+                let s = long_ref.unwrap(); //TODO
                 log::debug!("EXIF GPSLongitudeRef = {}", s.display_value());
                 if s.display_value().to_string() == "E" {
                     l
@@ -148,9 +182,6 @@ mod tests {
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
-        // load reverse_geocoder data
-        //place_finder::LocationsWrapper::init();
-        //place_finder::ReverseGeocoderWrapper::init();
     }
 
     #[test]

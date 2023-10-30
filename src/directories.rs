@@ -1,12 +1,11 @@
 //! # directories
 //!
 //! Functions to manage interactions with the filesystem.
+use eyre::Result;
 use std::{
     fs::{self, DirBuilder},
-    io,
     path::{Path, PathBuf},
 };
-use eyre::Result;
 
 // TODO : check IO Error bubbling
 

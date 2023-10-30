@@ -1,9 +1,13 @@
 //! reverse_gps
 //! leverage reverse_geocoder crate to get the nearest place (town) of the GPS data we got from an image.
 use exif::Rational;
-use eyre::Result;
 use once_cell::sync::OnceCell;
 use reverse_geocoder::{Locations, ReverseGeocoder};
+
+#[derive(Debug)]
+pub enum PlaceFinderError {
+    Decode(String),
+}
 
 // two static variables, to avoid loading data for each image we are dealing with.
 static LOCATIONS_WRAPPER: OnceCell<LocationsWrapper> = OnceCell::new();
@@ -54,16 +58,17 @@ pub fn find_place(lat: f64, long: f64) -> Option<String> {
 // https://www.fcc.gov/media/radio/dms-decimal
 // https://www.rapidtables.com/convert/number/degrees-minutes-seconds-to-degrees.html
 // TODO suppress unwrap() occurence and check ok_or(0) impacts. Manage input formats errors
-pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64> {
+pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64, PlaceFinderError> {
     log::trace!("convert_deg_min_sec_to_decimal_deg {:?}", coord);
-    let deg = coord.get(0).ok_or(0).map_err(Box::from);
-    let min = coord.get(1).ok_or(0).map_err(Box::from);
-    let sec = coord.get(2).ok_or(0).map_err(Box::from);
+    let display = format!("{:?}", coord);
+    let deg = coord.get(0).ok_or(PlaceFinderError::Decode(display.clone()))?;
+    let min = coord.get(1).ok_or(PlaceFinderError::Decode(display.clone()))?;
+    let sec = coord.get(2).ok_or(PlaceFinderError::Decode(display))?;
 
-    let m = min.unwrap().to_f64() / 60.0;
-    let s = sec.unwrap().to_f64() / 3600.0;
+    let m = min.to_f64() / 60.0;
+    let s = sec.to_f64() / 3600.0;
 
-    Ok(deg.unwrap().to_f64() + m + s)
+    Ok(deg.to_f64() + m + s)
 }
 
 #[cfg(test)]

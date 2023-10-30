@@ -3,6 +3,8 @@ use std::fs;
 use crate::directories;
 use crate::exif;
 use crate::exif::ExifData;
+use crate::exif::ExifError;
+use crate::reporting::Reporting;
 use eyre::Result;
 
 pub fn sort_images_in_dir(
@@ -18,18 +20,59 @@ pub fn sort_images_in_dir(
         let r_exif_data = exif::get_exif_data(&file);
         match r_exif_data {
             Ok(exif_data) => match sort_image_from_exif_data(&file, exif_data, target_dir) {
-                Ok(()) => log::trace!("Image {:?} processed...", file),
-                Err(e) => log::error!("Error {} when processing image {:?} ...", e, file),
-            },
-            Err(e) => {
-                log::warn!("Error {:?} when getting exif_data of file {:?}", e, file);
-                match copy_unsorted_image_in_specific_dir(&file, unsorted_images_dir) {
-                    Ok(()) => log::trace!(
-                        "Image {:?} processed (no Exif Data -> copied in unsorted dir)...",
-                        file
-                    ),
-                    Err(e) => log::error!("Error {} when processing image {:?} ...", e, file),
+                Ok(()) => {
+                    log::trace!("Image {:?} processed...", file);
+                    Reporting::image_processed_sorted();
                 }
+                Err(e) => {
+                    log::error!("Error {:?} when processing image {:?} ...", e, file);
+                    Reporting::error_on_image();
+                    eprintln!("Error {} when processing image {:?} ...", e, file)
+                }
+            },
+            Err(e) => match e {
+                ExifError::IO(io) => {
+                    log::error!("Error {:?} when processing image {:?} ...", io, file);
+                    Reporting::error_on_image();
+                    eprintln!("Error {} when processing image {:?} ...", io, file)
+                },
+                ExifError::NotImageFile(s) => {
+                    log::warn!("{} is not an image. {}", file.display(), s)
+                },
+                ExifError::Decoding(s) => {
+                    log::error!("Error {:?} when decoding exif_data of file {:?}", s, file);
+                    match copy_unsorted_image_in_specific_dir(&file, unsorted_images_dir) {
+                        Ok(()) => {
+                            Reporting::image_processed_unsorted();
+                            log::trace!(
+                                "Image {:?} processed (no Exif Data -> copied in unsorted dir)...",
+                                file
+                            )
+                        }
+                        Err(e) => {
+                            log::error!("Error {:?} when processing image {:?} ...", e, file);
+                            Reporting::error_on_image();
+                            eprintln!("Error {} when processing image {:?} ...", e, file)
+                        }
+                    }
+                },
+                ExifError::NoExifData => {
+                    log::warn!("Error {:?} when getting exif_data of file {:?}", e, file);
+                    match copy_unsorted_image_in_specific_dir(&file, unsorted_images_dir) {
+                        Ok(()) => {
+                            Reporting::image_processed_unsorted();
+                            log::trace!(
+                                "Image {:?} processed (no Exif Data -> copied in unsorted dir)...",
+                                file
+                            )
+                        }
+                        Err(e) => {
+                            log::error!("Error {:?} when processing image {:?} ...", e, file);
+                            Reporting::error_on_image();
+                            eprintln!("Error {} when processing image {:?} ...", e, file)
+                        }
+                    }
+                },
             }
         }
     }
