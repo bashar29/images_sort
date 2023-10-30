@@ -112,67 +112,13 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
     // TODO ensure management of GPSLatitudeRef and GPSLongitudeRef are robust (not sure at the moment)
     let lat = exif.get_field(Tag::GPSLatitude, In::PRIMARY);
     let lat_ref = exif.get_field(Tag::GPSLatitudeRef, In::PRIMARY);
-    if let Some(lat) = lat {
-        log::debug!("EXIF GPSLatitude = {}", lat.display_value());
-        exif_data.gps_lat = match &lat.value {
-            Value::Rational(vec_rationals) => {
-                //let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
-                let l = match place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals) {
-                    Ok(l) => l,
-                    Err(place_finder::PlaceFinderError::Decode(coords)) => {
-                        return Err(ExifError::Decoding(coords))
-                    }
-                };
-
-                match lat_ref {
-                    Some(v) => {
-                        log::debug!("EXIF GPSLatitudeRef = {}", v.display_value());
-                        if v.display_value().to_string() == "N" {
-                            l
-                        } else {
-                            -1.0 * l
-                        }
-                    },
-                    None => 0.0,
-                }
-            }
-            _ => 0.0,
-        };
-    } else {
-        log::warn!("EXIF GPSLatitude tag is missing");
-    }
+    
+    exif_data.gps_lat = analyze_exif_lat_long(lat, lat_ref)?;
 
     let long = exif.get_field(Tag::GPSLongitude, In::PRIMARY);
     let long_ref = exif.get_field(Tag::GPSLongitudeRef, In::PRIMARY);
-    if let Some(long) = long {
-        log::debug!("EXIF GPSLongitude = {}", long.display_value());
-        exif_data.gps_long = match &long.value {
-            Value::Rational(vec_rationals) => {
-                //let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
-                let l = match place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals) {
-                    Ok(l) => l,
-                    Err(place_finder::PlaceFinderError::Decode(coords)) => {
-                        return Err(ExifError::Decoding(coords))
-                    }
-                };
-                
-                match long_ref {
-                    Some(v) => {
-                        log::debug!("EXIF GPSLongitudeRef = {}", v.display_value());
-                        if v.display_value().to_string() == "E" {
-                            l
-                        } else {
-                            -1.0 * l
-                        }
-                    },
-                    None => 0.0,
-                }
-            }
-            _ => 0.0,
-        };
-    } else {
-        log::warn!("EXIF GPSLongitude tag is missing");
-    }
+    
+    exif_data.gps_long = analyze_exif_lat_long(long, long_ref)?;
 
     if exif_data.gps_lat != 0.0 || exif_data.gps_long != 0.0 {
         let place = place_finder::find_place(exif_data.gps_lat, exif_data.gps_long);
@@ -200,6 +146,45 @@ fn analyze_exif_datetime(date_time: Option<&Field>) -> Option<Directory> {
     } else {
         None
     }
+}
+
+/// analyse field GPSLatitude / GPSLongitude and GPSLatitudeRef / GPSLongitudeRef and return 
+/// a f64 value that represent the latitude in decimal degree.
+/// If not possible to get the latitude, return 0.0 (latitude of Null Island)
+fn analyze_exif_lat_long(l: Option<&Field>, l_ref: Option<&Field>) -> Result<f64, ExifError> {
+
+    if let Some(l) = l {
+        log::debug!("EXIF GPSL*** = {}", l.display_value());
+        let latitude_or_longitude = match &l.value {
+            Value::Rational(vec_rationals) => {
+                //let l = place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals)?;
+                let l = match place_finder::convert_deg_min_sec_to_decimal_deg(vec_rationals) {
+                    Ok(l) => l,
+                    Err(place_finder::PlaceFinderError::Decode(coords)) => {
+                        return Err(ExifError::Decoding(coords))
+                    }
+                };
+
+                match l_ref {
+                    Some(v) => {
+                        log::debug!("EXIF GPSL***Ref = {}", v.display_value());
+                        if v.display_value().to_string() == "N" || v.display_value().to_string() == "E" {
+                            l
+                        } else {
+                            -1.0 * l
+                        }
+                    },
+                    None => 0.0,
+                }
+            }
+            _ => 0.0,
+        };
+        Ok(latitude_or_longitude)
+    } else {
+        log::warn!("EXIF GPSLatitude tag is missing");
+        Ok(0.0)
+    }
+
 }
 
 
