@@ -73,7 +73,7 @@ fn main() {
     };
 
     let unsorted_dir = directories::create_unsorted_images_dir(&target).unwrap();
-    
+
     println!("Sorting images ...");
 
     for dir in &all_directories {

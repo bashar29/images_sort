@@ -57,12 +57,15 @@ pub fn find_place(lat: f64, long: f64) -> Option<String> {
 // conversion
 // https://www.fcc.gov/media/radio/dms-decimal
 // https://www.rapidtables.com/convert/number/degrees-minutes-seconds-to-degrees.html
-// TODO suppress unwrap() occurence and check ok_or(0) impacts. Manage input formats errors
 pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64, PlaceFinderError> {
     log::trace!("convert_deg_min_sec_to_decimal_deg {:?}", coord);
     let display = format!("{:?}", coord);
-    let deg = coord.get(0).ok_or(PlaceFinderError::Decode(display.clone()))?;
-    let min = coord.get(1).ok_or(PlaceFinderError::Decode(display.clone()))?;
+    let deg = coord
+        .get(0)
+        .ok_or(PlaceFinderError::Decode(display.clone()))?;
+    let min = coord
+        .get(1)
+        .ok_or(PlaceFinderError::Decode(display.clone()))?;
     let sec = coord.get(2).ok_or(PlaceFinderError::Decode(display))?;
 
     let m = min.to_f64() / 60.0;

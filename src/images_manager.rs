@@ -35,10 +35,10 @@ pub fn sort_images_in_dir(
                     log::error!("Error {:?} when processing image {:?} ...", io, file);
                     Reporting::error_on_image();
                     eprintln!("Error {} when processing image {:?} ...", io, file)
-                },
+                }
                 ExifError::NotImageFile(s) => {
                     log::warn!("{} is not an image. {}", file.display(), s)
-                },
+                }
                 ExifError::Decoding(s) => {
                     log::error!("Error {:?} when decoding exif_data of file {:?}", s, file);
                     match copy_unsorted_image_in_specific_dir(&file, unsorted_images_dir) {
@@ -55,9 +55,9 @@ pub fn sort_images_in_dir(
                             eprintln!("Error {} when processing image {:?} ...", e, file)
                         }
                     }
-                },
+                }
                 ExifError::NoExifData => {
-                    log::warn!("Error {:?} when getting exif_data of file {:?}", e, file);
+                    log::warn!("Warning: {:?} when getting exif_data of file {:?}", e, file);
                     match copy_unsorted_image_in_specific_dir(&file, unsorted_images_dir) {
                         Ok(()) => {
                             Reporting::image_processed_unsorted();
@@ -72,8 +72,8 @@ pub fn sort_images_in_dir(
                             eprintln!("Error {} when processing image {:?} ...", e, file)
                         }
                     }
-                },
-            }
+                }
+            },
         }
     }
     Ok(())
@@ -97,7 +97,7 @@ fn sort_image_from_exif_data(
     let new_directory_path = std::path::Path::new(exif_data.device.get());
     let new_directory_path_buf =
         directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
-
+    // TODO suppress unwrap()
     let mut new_path_name: String = String::from(new_directory_path_buf.to_str().unwrap());
     new_path_name.push('/');
     new_path_name.push_str(file.file_name().unwrap().to_str().unwrap());

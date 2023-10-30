@@ -46,6 +46,9 @@ impl Reporting {
         println!("number of images processed : {}", r.nb_images);
         println!("number of images sorted : {}", r.nb_sorted_images);
         println!("number of images not sorted : {}", r.nb_unsorted_images);
-        println!("number of error when dealing with an image : {}", r.nb_error_on_images);
+        println!(
+            "number of error when dealing with an image : {}",
+            r.nb_error_on_images
+        );
     }
 }

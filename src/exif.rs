@@ -93,7 +93,17 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
         exif_data.year_month = Directory::parse(String::from(&timestamp_value[0..7]));
     } else {
         // TODO exploit DateTimeDigitized
-        log::warn!("EXIF DateTimeOriginal tag is missing");
+        log::warn!("EXIF DateTimeOriginal tag is missing - trying DateTimeDigitized");
+        let date_time = exif.get_field(Tag::DateTimeDigitized, In::PRIMARY);
+        if let Some(timestamp) = date_time {
+            log::debug!("EXIF DateTimeDigitized = {}", timestamp.display_value());
+            let timestamp_value = timestamp.display_value().to_string();
+            exif_data.year_month = Directory::parse(String::from(&timestamp_value[0..7]));
+        } else {
+            // TODO exploit DateTimeDigitized
+            log::warn!("both EXIF DateTimeOriginal and DateTimeDigitized tag are missing");
+            
+        }
     }
 
     let device = exif.get_field(Tag::Model, In::PRIMARY);

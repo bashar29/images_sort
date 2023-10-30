@@ -7,8 +7,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-// TODO : check IO Error bubbling
-
 const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
 const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
 
@@ -67,7 +65,7 @@ pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf>
     log::trace!("create_subdir in {:?}", parent_directory);
     let new_dir = parent_directory.join(sub_dir);
     DirBuilder::new().recursive(true).create(&new_dir)?;
-    // TODO : check behaviour when dir already exists
+    // Recursive mode : success even when new_dir already exists
     Ok(new_dir)
 }
 
