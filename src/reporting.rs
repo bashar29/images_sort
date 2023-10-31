@@ -52,3 +52,35 @@ impl Reporting {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    #[test]
+    fn test_reporting() {
+        init();
+        Reporting::directory_processed();
+        Reporting::error_on_image();
+        Reporting::error_on_image();
+        for _ in 0..20 {
+            Reporting::image_processed_sorted();
+        }
+        for _ in 0..10 {
+            Reporting::image_processed_unsorted();
+        }
+        Reporting::error_on_image();
+
+        // /!\ REPORTING_WRAPPER is static ; if another test use it to access and modify
+        // the Reporting object, then the assert_eq!() of this test (or of the another test) will failed.
+        // So : keep only one test usinf REPORTING_WRAPPER !!!
+        assert_eq!(1, REPORTING_WRAPPER.read().unwrap().nb_directories);
+        assert_eq!(3, REPORTING_WRAPPER.read().unwrap().nb_error_on_images);
+        assert_eq!(10, REPORTING_WRAPPER.read().unwrap().nb_unsorted_images);
+        assert_eq!(20, REPORTING_WRAPPER.read().unwrap().nb_sorted_images);
+    }
+}

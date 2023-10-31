@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// TODO path in windows environnement???
 const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
 const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
 
@@ -37,7 +38,6 @@ fn get_subdirectories(top_directory: &Path) -> Result<Vec<PathBuf>> {
 pub fn create_sorted_images_dir(top_directory: &Path) -> Result<PathBuf> {
     log::trace!("create_sorted_images_dir in {:?}", top_directory);
     let now = chrono::Local::now();
-    log::debug!("now == {}", now);
     //let suffix = now.format("%Y%m%d-%H%M%S").to_string();
     let suffix = now.format("%Y%m%d-%H%M%S").to_string();
     let dirname = format!("{}{}", SORTED_IMAGES_DIRNAME_PREFIX, suffix);
@@ -83,6 +83,8 @@ pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
 mod tests {
     use super::*;
 
+    // TODO : paths in Windows environnement???
+    
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
@@ -116,4 +118,54 @@ mod tests {
         assert_eq!(current_dir, std::env::current_dir().unwrap());
         std::fs::remove_dir_all("./this_dir").unwrap();
     }
+
+    #[test]
+    fn test_get_subdirectories() {
+        init();
+        let current_dir = std::env::current_dir().unwrap();
+        std::fs::create_dir("./this_new_dir").unwrap();
+        std::fs::create_dir("./this_new_dir/1first").unwrap();
+        std::fs::create_dir("./this_new_dir/2second").unwrap();
+        std::fs::create_dir("./this_new_dir/3third").unwrap();
+        let r = get_subdirectories(Path::new(&String::from("./this_new_dir")));
+        match r {
+            Ok(v) => {
+                assert_eq!(3, v.iter().count());
+                assert!(v.contains(&PathBuf::from("./this_new_dir/1first")));
+                assert!(v.contains(&PathBuf::from("./this_new_dir/2second")));
+                assert!(v.contains(&PathBuf::from("./this_new_dir/3third")));
+            }
+            Err(_) => panic!("Error retrieving subdirectories"),
+        }
+
+        // ensure we are in the good directory before cleanup
+        assert_eq!(current_dir, std::env::current_dir().unwrap());
+        std::fs::remove_dir_all("./this_new_dir").unwrap();
+    }
+
+    #[test]
+    fn test_get_subdirectories_recursive() {
+        init();
+        let current_dir = std::env::current_dir().unwrap();
+        std::fs::create_dir("./this_new_dir_rec").unwrap();
+        std::fs::create_dir("./this_new_dir_rec/1first").unwrap();
+        std::fs::create_dir_all("./this_new_dir_rec/2second/test1").unwrap();
+        std::fs::create_dir_all("./this_new_dir_rec/2second/test2/last").unwrap();
+        let r = get_subdirectories_recursive(Path::new(&String::from("./this_new_dir_rec")));
+        match r {
+            Ok(v) => {
+                assert_eq!(5, v.iter().count());
+                log::debug!("{:?}",v);
+                assert!(v.contains(&PathBuf::from("./this_new_dir_rec/1first")));
+                assert!(v.contains(&PathBuf::from("./this_new_dir_rec/2second/test1")));
+                assert!(v.contains(&PathBuf::from("./this_new_dir_rec/2second/test2/last")));
+            }
+            Err(_) => panic!("Error retrieving subdirectories"),
+        }
+
+        // ensure we are in the good directory before cleanup
+        assert_eq!(current_dir, std::env::current_dir().unwrap());
+        std::fs::remove_dir_all("./this_new_dir_rec").unwrap();
+    }
+
 }
