@@ -7,6 +7,7 @@ use crate::exif::ExifError;
 use crate::global_configuration::GlobalConfiguration;
 use crate::reporting::Reporting;
 use eyre::Result;
+use indicatif::ProgressBar;
 
 pub fn sort_images_in_dir(
     dir: &std::path::Path,
@@ -17,7 +18,7 @@ pub fn sort_images_in_dir(
     log::trace!("sort_images_of_dir in {:?}", dir);
 
     let files = directories::get_files_from_dir(dir)?;
-
+    let bar = ProgressBar::new(files.len().try_into().unwrap());
     for file in files {
         let r_exif_data = exif::get_exif_data(&file);
         match r_exif_data {
@@ -77,6 +78,7 @@ pub fn sort_images_in_dir(
                 }
             },
         }
+        bar.inc(1);
     }
     Ok(())
 }
@@ -104,10 +106,10 @@ fn sort_image_from_exif_data(
             directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
     }
 
-    // TODO suppress unwrap()
-    let mut new_path_name: String = String::from(new_directory_path_buf.to_str().unwrap());
+    let mut new_path_name: String = String::from(new_directory_path_buf.to_string_lossy());
     new_path_name.push('/');
-    new_path_name.push_str(file.file_name().unwrap().to_str().unwrap());
+    // unwrap() is ok here, the file have been checked as a file before
+    new_path_name.push_str(&file.file_name().unwrap().to_string_lossy().to_string());
 
     fs::copy(file, std::path::Path::new(&new_path_name))?;
 

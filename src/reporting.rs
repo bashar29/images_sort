@@ -8,6 +8,7 @@ pub struct Reporting {
     nb_error_on_images: u32,
 }
 
+// anti-pattern???
 static REPORTING_WRAPPER: RwLock<Reporting> = RwLock::new(Reporting {
     nb_directories: 0,
     nb_images: 0,
@@ -16,7 +17,6 @@ static REPORTING_WRAPPER: RwLock<Reporting> = RwLock::new(Reporting {
     nb_error_on_images: 0,
 });
 
-// TODO get rid of these unwrap() calls
 impl Reporting {
     pub fn image_processed_sorted() {
         let mut r = REPORTING_WRAPPER.write().unwrap();

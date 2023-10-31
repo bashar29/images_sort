@@ -1,4 +1,5 @@
 use clap::Parser;
+use indicatif::ProgressBar;
 
 use crate::{global_configuration::GlobalConfiguration, reporting::Reporting};
 
@@ -20,7 +21,7 @@ struct Args {
     dest_dir: Option<String>,
     /// Use Device (Camera Model) as a key to sort
     #[arg(short, long)]
-    use_device: Option<bool>, // TODO use it
+    use_device: Option<bool>,
 }
 
 fn main() {
@@ -82,6 +83,7 @@ fn main() {
 
     println!("Sorting images ...");
 
+    let bar = ProgressBar::new(all_directories.len().try_into().unwrap());
     for dir in &all_directories {
         log::debug!("{:?}", dir);
         match images_manager::sort_images_in_dir(dir, &sorted_dir, &unsorted_dir, &configuration) {
@@ -101,6 +103,7 @@ fn main() {
                 println!("Images in {:?} processed...", dir);
             }
         }
+        bar.inc(1);
     }
     Reporting::print_reporting();
 }

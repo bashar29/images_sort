@@ -108,7 +108,6 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
     }
 
     // https://exiftool.org/TagNames/GPS.html
-    // TODO ensure management of GPSLatitudeRef and GPSLongitudeRef are robust (not sure at the moment)
     let lat = exif.get_field(Tag::GPSLatitude, In::PRIMARY);
     let lat_ref = exif.get_field(Tag::GPSLatitudeRef, In::PRIMARY);
 
