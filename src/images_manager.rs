@@ -109,7 +109,7 @@ fn sort_image_from_exif_data(
     let mut new_path_name: String = String::from(new_directory_path_buf.to_string_lossy());
     new_path_name.push('/');
     // unwrap() is ok here, the file have been checked as a file before
-    new_path_name.push_str(&file.file_name().unwrap().to_string_lossy().to_string());
+    new_path_name.push_str(file.file_name().unwrap().to_string_lossy().as_ref());
 
     fs::copy(file, std::path::Path::new(&new_path_name))?;
 

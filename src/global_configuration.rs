@@ -29,7 +29,7 @@ impl GlobalConfiguration {
     }
 
     pub fn source_directory_as_path(&self) -> &Path {
-        &self.source_directory.as_path()
+        self.source_directory.as_path()
     }
 
     pub fn source_directory_mut(&mut self) -> &mut PathBuf {
@@ -41,7 +41,7 @@ impl GlobalConfiguration {
     }
 
     pub fn dest_directory_as_path(&self) -> &Path {
-        &self.dest_directory.as_path()
+        self.dest_directory.as_path()
     }
 
     pub fn dest_directory_mut(&mut self) -> &mut PathBuf {
