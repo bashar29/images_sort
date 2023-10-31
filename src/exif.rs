@@ -4,7 +4,7 @@
 //!
 
 use crate::place_finder;
-use exif::{Exif, In, Tag, Value, Field};
+use exif::{Exif, Field, In, Tag, Value};
 use regex::Regex;
 use std::path::Path;
 
@@ -89,13 +89,12 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
     let date_time_original = exif.get_field(Tag::DateTimeOriginal, In::PRIMARY);
     let date_time_digitized = exif.get_field(Tag::DateTimeDigitized, In::PRIMARY);
     if let Some(timestamp) = analyze_exif_datetime(date_time_original) {
-        exif_data.year_month = timestamp;    
+        exif_data.year_month = timestamp;
     } else {
         log::warn!("EXIF DateTimeOriginal tag is missing - trying DateTimeDigitized");
         if let Some(timestamp) = analyze_exif_datetime(date_time_digitized) {
             exif_data.year_month = timestamp;
-        }
-        else {
+        } else {
             log::warn!("both EXIF DateTimeOriginal and DateTimeDigitized tag are missing");
         }
     }
@@ -112,12 +111,12 @@ fn analyze_exif_data(exif: Exif) -> Result<ExifData, ExifError> {
     // TODO ensure management of GPSLatitudeRef and GPSLongitudeRef are robust (not sure at the moment)
     let lat = exif.get_field(Tag::GPSLatitude, In::PRIMARY);
     let lat_ref = exif.get_field(Tag::GPSLatitudeRef, In::PRIMARY);
-    
+
     exif_data.gps_lat = analyze_exif_lat_long(lat, lat_ref)?;
 
     let long = exif.get_field(Tag::GPSLongitude, In::PRIMARY);
     let long_ref = exif.get_field(Tag::GPSLongitudeRef, In::PRIMARY);
-    
+
     exif_data.gps_long = analyze_exif_lat_long(long, long_ref)?;
 
     if exif_data.gps_lat != 0.0 || exif_data.gps_long != 0.0 {
@@ -148,11 +147,10 @@ fn analyze_exif_datetime(date_time: Option<&Field>) -> Option<Directory> {
     }
 }
 
-/// analyse field GPSLatitude / GPSLongitude and GPSLatitudeRef / GPSLongitudeRef and return 
+/// analyse field GPSLatitude / GPSLongitude and GPSLatitudeRef / GPSLongitudeRef and return
 /// a f64 value that represent the latitude in decimal degree.
 /// If not possible to get the latitude, return 0.0 (latitude of Null Island)
 fn analyze_exif_lat_long(l: Option<&Field>, l_ref: Option<&Field>) -> Result<f64, ExifError> {
-
     if let Some(l) = l {
         log::debug!("EXIF GPSL*** = {}", l.display_value());
         let latitude_or_longitude = match &l.value {
@@ -168,12 +166,14 @@ fn analyze_exif_lat_long(l: Option<&Field>, l_ref: Option<&Field>) -> Result<f64
                 match l_ref {
                     Some(v) => {
                         log::debug!("EXIF GPSL***Ref = {}", v.display_value());
-                        if v.display_value().to_string() == "N" || v.display_value().to_string() == "E" {
+                        if v.display_value().to_string() == "N"
+                            || v.display_value().to_string() == "E"
+                        {
                             l
                         } else {
                             -1.0 * l
                         }
-                    },
+                    }
                     None => 0.0,
                 }
             }
@@ -184,9 +184,7 @@ fn analyze_exif_lat_long(l: Option<&Field>, l_ref: Option<&Field>) -> Result<f64
         log::warn!("EXIF GPSLatitude tag is missing");
         Ok(0.0)
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -213,10 +211,3 @@ mod tests {
         );
     }
 }
-
-// DateTimeOriginal
-// DateTimeDigitized
-// Model
-// GPSLatitude
-// GPSLongitude
-// https://developers.google.com/maps/documentation/geocoding/requests-reverse-geocoding?hl=fr

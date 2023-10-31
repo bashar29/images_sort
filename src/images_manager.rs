@@ -4,6 +4,7 @@ use crate::directories;
 use crate::exif;
 use crate::exif::ExifData;
 use crate::exif::ExifError;
+use crate::global_configuration::GlobalConfiguration;
 use crate::reporting::Reporting;
 use eyre::Result;
 
@@ -11,6 +12,7 @@ pub fn sort_images_in_dir(
     dir: &std::path::Path,
     target_dir: &std::path::Path,
     unsorted_images_dir: &std::path::Path,
+    configuration: &GlobalConfiguration
 ) -> Result<()> {
     log::trace!("sort_images_of_dir in {:?}", dir);
 
@@ -19,7 +21,7 @@ pub fn sort_images_in_dir(
     for file in files {
         let r_exif_data = exif::get_exif_data(&file);
         match r_exif_data {
-            Ok(exif_data) => match sort_image_from_exif_data(&file, exif_data, target_dir) {
+            Ok(exif_data) => match sort_image_from_exif_data(&file, exif_data, target_dir, configuration) {
                 Ok(()) => {
                     log::trace!("Image {:?} processed...", file);
                     Reporting::image_processed_sorted();
@@ -83,6 +85,7 @@ fn sort_image_from_exif_data(
     file: &std::path::Path,
     exif_data: ExifData,
     target_dir: &std::path::Path,
+    configuration: &GlobalConfiguration
 ) -> Result<()> {
     log::trace!(
         "sort_image_from_exif_data file: {:?} exif_data: {:?}",
@@ -92,11 +95,15 @@ fn sort_image_from_exif_data(
     let new_directory_path = std::path::Path::new(exif_data.year_month.get());
     let new_directory_path_buf = directories::create_subdir(target_dir, new_directory_path)?;
     let new_directory_path = std::path::Path::new(exif_data.place.get());
-    let new_directory_path_buf =
+    let mut new_directory_path_buf =
         directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
-    let new_directory_path = std::path::Path::new(exif_data.device.get());
-    let new_directory_path_buf =
-        directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
+    
+    if *configuration.use_device() {
+        let new_directory_path = std::path::Path::new(exif_data.device.get());
+        new_directory_path_buf =
+            directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
+    }
+
     // TODO suppress unwrap()
     let mut new_path_name: String = String::from(new_directory_path_buf.to_str().unwrap());
     new_path_name.push('/');

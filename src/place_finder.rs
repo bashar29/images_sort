@@ -54,9 +54,9 @@ pub fn find_place(lat: f64, long: f64) -> Option<String> {
     Some(String::from(&search_result.record.name))
 }
 
-// conversion
-// https://www.fcc.gov/media/radio/dms-decimal
-// https://www.rapidtables.com/convert/number/degrees-minutes-seconds-to-degrees.html
+/// Conversion from deg / min / sec format to decimal degrees
+/// <https://www.fcc.gov/media/radio/dms-decimal>
+/// <https://www.rapidtables.com/convert/number/degrees-minutes-seconds-to-degrees.html>
 pub fn convert_deg_min_sec_to_decimal_deg(coord: &Vec<Rational>) -> Result<f64, PlaceFinderError> {
     log::trace!("convert_deg_min_sec_to_decimal_deg {:?}", coord);
     let display = format!("{:?}", coord);
