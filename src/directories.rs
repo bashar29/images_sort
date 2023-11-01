@@ -84,7 +84,7 @@ mod tests {
     use super::*;
 
     // TODO : paths in Windows environnement???
-    
+
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
@@ -116,6 +116,7 @@ mod tests {
 
         // ensure we are in the good directory before cleaning this_dir.
         assert_eq!(current_dir, std::env::current_dir().unwrap());
+        // cleanup
         std::fs::remove_dir_all("./this_dir").unwrap();
     }
 
@@ -140,6 +141,7 @@ mod tests {
 
         // ensure we are in the good directory before cleanup
         assert_eq!(current_dir, std::env::current_dir().unwrap());
+        // cleanup
         std::fs::remove_dir_all("./this_new_dir").unwrap();
     }
 
@@ -155,7 +157,7 @@ mod tests {
         match r {
             Ok(v) => {
                 assert_eq!(5, v.iter().count());
-                log::debug!("{:?}",v);
+                log::debug!("{:?}", v);
                 assert!(v.contains(&PathBuf::from("./this_new_dir_rec/1first")));
                 assert!(v.contains(&PathBuf::from("./this_new_dir_rec/2second/test1")));
                 assert!(v.contains(&PathBuf::from("./this_new_dir_rec/2second/test2/last")));
@@ -165,7 +167,7 @@ mod tests {
 
         // ensure we are in the good directory before cleanup
         assert_eq!(current_dir, std::env::current_dir().unwrap());
+        // cleanup
         std::fs::remove_dir_all("./this_new_dir_rec").unwrap();
     }
-
 }

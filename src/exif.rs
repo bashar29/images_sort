@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn test_get_exif_data() {
         init();
-        let path = std::path::Path::new("DSCN0025.jpg");
+        let path = std::path::Path::new("data_4_tests/DSCN0025.jpg");
         let exif_data = get_exif_data(path).unwrap();
         log::debug!("{:?}", exif_data);
         assert_eq!(

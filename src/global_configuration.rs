@@ -35,7 +35,7 @@ impl GlobalConfiguration {
     pub fn source_directory_mut(&mut self) -> &mut PathBuf {
         &mut self.source_directory
     }
-    
+
     pub fn _dest_directory(&self) -> &PathBuf {
         &self.dest_directory
     }
@@ -47,8 +47,6 @@ impl GlobalConfiguration {
     pub fn dest_directory_mut(&mut self) -> &mut PathBuf {
         &mut self.dest_directory
     }
-
-
 }
 
 #[cfg(test)]

@@ -24,8 +24,6 @@ struct Args {
     use_device: Option<bool>,
 }
 
-// TODO doublon de photos???
-
 fn main() {
     env_logger::init();
     let mut configuration = GlobalConfiguration::new();
@@ -40,13 +38,13 @@ fn main() {
 
     match args.dest_dir {
         Some(dest_dir) => *configuration.dest_directory_mut() = std::path::PathBuf::from(dest_dir),
-        None => *configuration.dest_directory_mut() = configuration.source_directory().clone()
+        None => *configuration.dest_directory_mut() = configuration.source_directory().clone(),
     }
 
     if let Some(d) = args.use_device {
         *configuration.use_device_mut() = d;
     }
-    
+
     let mut all_directories =
         match directories::get_subdirectories_recursive(configuration.source_directory_as_path()) {
             Ok(d) => d,
@@ -68,18 +66,19 @@ fn main() {
     all_directories.push(configuration.source_directory().clone());
 
     println!("Create target directory ...");
-    
-    let sorted_dir = match directories::create_sorted_images_dir(configuration.dest_directory_as_path()) {
-        Ok(path) => path,
-        Err(e) => {
-            log::error!(
-            "target directory creation failed : {:?}, ending execution",
-            e
-            );
-            eprintln!("target directory creation failed : {}, ending execution", e);
-            std::process::exit(1)
-        } 
-    };
+
+    let sorted_dir =
+        match directories::create_sorted_images_dir(configuration.dest_directory_as_path()) {
+            Ok(path) => path,
+            Err(e) => {
+                log::error!(
+                    "target directory creation failed : {:?}, ending execution",
+                    e
+                );
+                eprintln!("target directory creation failed : {}, ending execution", e);
+                std::process::exit(1)
+            }
+        };
 
     let unsorted_dir = directories::create_unsorted_images_dir(&sorted_dir).unwrap();
 
