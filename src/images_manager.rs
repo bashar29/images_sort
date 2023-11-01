@@ -1,4 +1,6 @@
 use std::fs;
+use std::path::Path;
+use std::path::PathBuf;
 
 use crate::directories;
 use crate::exif;
@@ -106,12 +108,21 @@ fn sort_image_from_exif_data(
             directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
     }
 
+    // TODO improve algo (too much conversion)
     let mut new_path_name: String = String::from(new_directory_path_buf.to_string_lossy());
     new_path_name.push('/');
     // unwrap() is ok here, the file have been checked as a file before
     new_path_name.push_str(file.file_name().unwrap().to_string_lossy().as_ref());
 
-    fs::copy(file, std::path::Path::new(&new_path_name))?;
+    let new_path = std::path::Path::new(&new_path_name);
+    let checked = check_for_duplicate_and_rename(new_path)?;
+    
+    if let Some(deduplicate_path_name) = checked {
+        fs::copy(file, deduplicate_path_name.as_path())?;
+    } else {
+        fs::copy(file, new_path)?;
+    }
+
 
     Ok(())
 }
@@ -133,6 +144,40 @@ fn copy_unsorted_image_in_specific_dir(
     fs::DirBuilder::new()
         .recursive(true)
         .create(copied_file.parent().unwrap())?;
+    
     fs::copy(file, copied_file)?;
+   
     Ok(())
 }
+
+/// verify if there is already a file pointed by the path. If so, return a new path
+fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
+    log::trace!("check_for_duplicate_and_rename {:?}", file);
+    if file.is_dir() {
+        log::error!("Error when checking for duplication in target directory");
+        eprintln!("Error when checking for duplication in target directory");
+        return Err(eyre::eyre!("Error when checking for duplication in target directory"));
+    }
+    let test = file.try_exists()?;
+    // TODO check for a simpler implementation
+    if test == true {
+        
+        let path: &Path = file.as_ref();
+        let mut new_path = path.to_owned();
+        let mut new_filename = String::new();
+        new_filename.push_str(&file.file_stem().unwrap().to_string_lossy());
+        new_filename.push_str("_duplicate_");
+        new_filename.push_str(&rand::Rng::gen_range(&mut rand::thread_rng(), 100..255).to_string());
+
+        new_path.set_file_name(new_filename);
+        if let Some(ext) = path.extension() {
+            new_path.set_extension(ext);
+        }
+        
+        Ok(Some(new_path))
+    } else {
+        Ok(None)
+    }
+}
+
+//TODO Tests

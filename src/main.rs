@@ -24,6 +24,8 @@ struct Args {
     use_device: Option<bool>,
 }
 
+// TODO doublon de photos???
+
 fn main() {
     env_logger::init();
     let mut configuration = GlobalConfiguration::new();
