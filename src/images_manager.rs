@@ -108,21 +108,17 @@ fn sort_image_from_exif_data(
             directories::create_subdir(new_directory_path_buf.as_path(), new_directory_path)?;
     }
 
-    // TODO improve algo (too much conversion)
-    let mut new_path_name: String = String::from(new_directory_path_buf.to_string_lossy());
-    new_path_name.push('/');
-    // unwrap() is ok here, the file have been checked as a file before
-    new_path_name.push_str(file.file_name().unwrap().to_string_lossy().as_ref());
 
-    let new_path = std::path::Path::new(&new_path_name);
-    let checked = check_for_duplicate_and_rename(new_path)?;
+    let p = new_directory_path_buf.as_path();
+    // unwrap() is ok here, the file have been checked as a file before
+    let pb = p.join(std::path::Path::new(&file.file_name().unwrap()));
+    let checked = check_for_duplicate_and_rename(pb.as_path())?;
     
     if let Some(deduplicate_path_name) = checked {
         fs::copy(file, deduplicate_path_name.as_path())?;
     } else {
-        fs::copy(file, new_path)?;
+        fs::copy(file, pb.as_path())?;
     }
-
 
     Ok(())
 }
@@ -137,7 +133,6 @@ fn copy_unsorted_image_in_specific_dir(
         unsorted_dir
     );
     let mut copied_filename = String::from(unsorted_dir.to_str().unwrap());
-    log::debug!("copied filename: {:?}", copied_filename);
     copied_filename.push_str(file.to_str().unwrap());
     log::debug!("file: {:?} ; copied filename: {:?}", file, copied_filename);
     let copied_file = std::path::Path::new(&copied_filename);
@@ -158,8 +153,9 @@ fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
         eprintln!("Error when checking for duplication in target directory");
         return Err(eyre::eyre!("Error when checking for duplication in target directory"));
     }
+    
     let test = file.try_exists()?;
-    // TODO check for a simpler implementation
+    
     if test == true {
         
         let path: &Path = file.as_ref();
