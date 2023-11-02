@@ -164,7 +164,7 @@ fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
         let mut new_filename = String::new();
         new_filename.push_str(&file.file_stem().unwrap().to_string_lossy());
         new_filename.push_str("_duplicate_");
-        new_filename.push_str(&rand::Rng::gen_range(&mut rand::thread_rng(), 100..255).to_string());
+        new_filename.push_str(&rand::Rng::gen_range(&mut rand::thread_rng(), 100..4096).to_string());
 
         new_path.set_file_name(new_filename);
         if let Some(ext) = path.extension() {
