@@ -87,6 +87,7 @@ pub fn sort_images_in_dir(
     Ok(())
 }
 
+// TODO use configuration in place of target_dir?
 fn sort_image_from_exif_data(
     file: &std::path::Path,
     exif_data: &ExifData,
@@ -176,8 +177,6 @@ fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
     }
 }
 
-//TODO Tests
-
 #[cfg(test)]
 mod tests {
     use crate::exif::Directory;
@@ -233,7 +232,7 @@ mod tests {
     fn test_sort_image_from_exif_data() {
         init();
         let current_dir = std::env::current_dir().unwrap();
-        let dir_target = std::path::Path::new("./test_target");
+        let dir_target = std::path::Path::new("./test_sort_image");
         std::fs::create_dir(dir_target).unwrap();
 
         let mut configuration = GlobalConfiguration::new();
@@ -256,7 +255,7 @@ mod tests {
             &configuration,
         )
         .unwrap();
-        let copied_file = std::path::Path::new("./test_target/2023 10/Null_Island/DSCN0025.jpg");
+        let copied_file = std::path::Path::new("./test_sort_image/2023 10/Null_Island/DSCN0025.jpg");
         assert!(copied_file.exists());
 
         *configuration.use_device_mut() = true;
@@ -269,7 +268,7 @@ mod tests {
         )
         .unwrap();
         let copied_file =
-            std::path::Path::new("./test_target/2023 10/Null_Island/Nikkon/DSCN0025.jpg");
+            std::path::Path::new("./test_sort_image/2023 10/Null_Island/Nikkon/DSCN0025.jpg");
         assert!(copied_file.exists());
 
         // ensure we are in the good directory before cleanup
@@ -277,4 +276,30 @@ mod tests {
         // cleanup
         std::fs::remove_dir_all(dir_target).unwrap();
     }
+
+    #[test]
+    fn test_sort_images_in_dir() {
+        init();
+        let current_dir = std::env::current_dir().unwrap(); 
+        let mut configuration = GlobalConfiguration::new();
+        *configuration.use_device_mut() = false;
+        *configuration.source_directory_mut() = PathBuf::from("./");
+        *configuration.dest_directory_mut() = PathBuf::from("test_sort_images");
+
+        let source_dir = std::path::Path::new("data_4_tests");
+        let dir_target = std::path::Path::new("test_sort_images");
+        let unsorted_dir = std::path::Path::new("test_sort_images/unsorted");
+        
+        sort_images_in_dir(source_dir, dir_target, unsorted_dir, &configuration).unwrap();
+        assert_eq!(4, fs::read_dir("test_sort_images/2008 10/Arezzo")
+            .unwrap()
+            .map(|r| r.unwrap().path())
+            .filter(|r| r.is_file()).collect::<Vec<PathBuf>>().len());
+        
+        // ensure we are in the good directory before cleanup
+        assert_eq!(current_dir, std::env::current_dir().unwrap());
+        // cleanup
+        std::fs::remove_dir_all(dir_target).unwrap();
+    }
+
 }

@@ -8,7 +8,7 @@ pub struct Reporting {
     nb_error_on_images: u32,
 }
 
-// anti-pattern???
+// TODO anti-pattern to have a static vzariable?
 static REPORTING_WRAPPER: RwLock<Reporting> = RwLock::new(Reporting {
     nb_directories: 0,
     nb_images: 0,
@@ -40,6 +40,15 @@ impl Reporting {
         r.nb_error_on_images += 1;
     }
 
+    pub fn reset() {
+        let mut r = REPORTING_WRAPPER.write().unwrap(); 
+        r.nb_images = 0;
+        r.nb_sorted_images = 0;
+        r.nb_unsorted_images = 0;
+        r.nb_directories = 0;
+        r.nb_error_on_images = 0
+    }
+
     pub fn print_reporting() {
         let r = REPORTING_WRAPPER.read().unwrap();
         println!("number of directories processed : {}", r.nb_directories);
@@ -64,6 +73,11 @@ mod tests {
     #[test]
     fn test_reporting() {
         init();
+        // /!\ REPORTING_WRAPPER is static ; if another test use it to access and modify
+        // the Reporting object, then the assert_eq!() of this test (or of the another test) will failed.
+        // reset() to minimize the risk but it's still possible a write occurs from another test during tests execution
+        // to avoid this : cargo test -- --test-threads=1
+        Reporting::reset();
         Reporting::directory_processed();
         Reporting::error_on_image();
         Reporting::error_on_image();
@@ -77,7 +91,6 @@ mod tests {
 
         // /!\ REPORTING_WRAPPER is static ; if another test use it to access and modify
         // the Reporting object, then the assert_eq!() of this test (or of the another test) will failed.
-        // So : keep only one test usinf REPORTING_WRAPPER !!!
         assert_eq!(1, REPORTING_WRAPPER.read().unwrap().nb_directories);
         assert_eq!(3, REPORTING_WRAPPER.read().unwrap().nb_error_on_images);
         assert_eq!(10, REPORTING_WRAPPER.read().unwrap().nb_unsorted_images);

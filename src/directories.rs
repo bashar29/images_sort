@@ -92,10 +92,10 @@ mod tests {
     #[test]
     fn test_create_subdir() {
         init();
-        assert_eq!(Path::new("./new_dir").try_exists().unwrap(), false);
+        assert_eq!(Path::new("./test_create").try_exists().unwrap(), false);
         let result = create_subdir(
             std::path::Path::new(&String::from("./")),
-            std::path::Path::new(&String::from("new_dir")),
+            std::path::Path::new(&String::from("test_create")),
         );
         let dir = result.unwrap();
         assert!(dir.is_dir());
@@ -107,34 +107,36 @@ mod tests {
     fn test_get_files_from_dir() {
         init();
         let current_dir = std::env::current_dir().unwrap();
-        std::fs::create_dir("./this_dir").unwrap();
-        std::fs::File::create("./this_dir/foo1.txt").unwrap();
-        std::fs::File::create("./this_dir/foo2.txt").unwrap();
-        std::fs::File::create("./this_dir/foo3.txt").unwrap();
-        let files = get_files_from_dir(std::path::Path::new(&String::from("./this_dir"))).unwrap();
+        let test_path = std::path::Path::new("./test_get");
+        std::fs::create_dir(test_path).unwrap();
+        std::fs::File::create("./test_get/foo1.txt").unwrap();
+        std::fs::File::create("./test_get/foo2.txt").unwrap();
+        std::fs::File::create("./test_get/foo3.txt").unwrap();
+        let files = get_files_from_dir(test_path).unwrap();
         assert_eq!(files.len(), 3);
 
         // ensure we are in the good directory before cleaning this_dir.
         assert_eq!(current_dir, std::env::current_dir().unwrap());
         // cleanup
-        std::fs::remove_dir_all("./this_dir").unwrap();
+        std::fs::remove_dir_all(test_path).unwrap();
     }
 
     #[test]
     fn test_get_subdirectories() {
         init();
         let current_dir = std::env::current_dir().unwrap();
-        std::fs::create_dir("./this_new_dir").unwrap();
-        std::fs::create_dir("./this_new_dir/1first").unwrap();
-        std::fs::create_dir("./this_new_dir/2second").unwrap();
-        std::fs::create_dir("./this_new_dir/3third").unwrap();
-        let r = get_subdirectories(Path::new(&String::from("./this_new_dir")));
+        let test_path = std::path::Path::new("./test_get_sub");
+        std::fs::create_dir(test_path).unwrap();
+        std::fs::create_dir("./test_get_sub/1first").unwrap();
+        std::fs::create_dir("./test_get_sub/2second").unwrap();
+        std::fs::create_dir("./test_get_sub/3third").unwrap();
+        let r = get_subdirectories(test_path);
         match r {
             Ok(v) => {
                 assert_eq!(3, v.iter().count());
-                assert!(v.contains(&PathBuf::from("./this_new_dir/1first")));
-                assert!(v.contains(&PathBuf::from("./this_new_dir/2second")));
-                assert!(v.contains(&PathBuf::from("./this_new_dir/3third")));
+                assert!(v.contains(&PathBuf::from("./test_get_sub/1first")));
+                assert!(v.contains(&PathBuf::from("./test_get_sub/2second")));
+                assert!(v.contains(&PathBuf::from("./test_get_sub/3third")));
             }
             Err(_) => panic!("Error retrieving subdirectories"),
         }
@@ -142,25 +144,26 @@ mod tests {
         // ensure we are in the good directory before cleanup
         assert_eq!(current_dir, std::env::current_dir().unwrap());
         // cleanup
-        std::fs::remove_dir_all("./this_new_dir").unwrap();
+        std::fs::remove_dir_all(test_path).unwrap();
     }
 
     #[test]
     fn test_get_subdirectories_recursive() {
         init();
         let current_dir = std::env::current_dir().unwrap();
-        std::fs::create_dir("./this_new_dir_rec").unwrap();
-        std::fs::create_dir("./this_new_dir_rec/1first").unwrap();
-        std::fs::create_dir_all("./this_new_dir_rec/2second/test1").unwrap();
-        std::fs::create_dir_all("./this_new_dir_rec/2second/test2/last").unwrap();
-        let r = get_subdirectories_recursive(Path::new(&String::from("./this_new_dir_rec")));
+        let test_path = std::path::Path::new("./test_get_sub_r");
+        std::fs::create_dir(test_path).unwrap();
+        std::fs::create_dir("./test_get_sub_r/1first").unwrap();
+        std::fs::create_dir_all("./test_get_sub_r/2second/test1").unwrap();
+        std::fs::create_dir_all("./test_get_sub_r/2second/test2/last").unwrap();
+        let r = get_subdirectories_recursive(test_path);
         match r {
             Ok(v) => {
                 assert_eq!(5, v.iter().count());
                 log::debug!("{:?}", v);
-                assert!(v.contains(&PathBuf::from("./this_new_dir_rec/1first")));
-                assert!(v.contains(&PathBuf::from("./this_new_dir_rec/2second/test1")));
-                assert!(v.contains(&PathBuf::from("./this_new_dir_rec/2second/test2/last")));
+                assert!(v.contains(&PathBuf::from("./test_get_sub_r/1first")));
+                assert!(v.contains(&PathBuf::from("./test_get_sub_r/2second/test1")));
+                assert!(v.contains(&PathBuf::from("./test_get_sub_r/2second/test2/last")));
             }
             Err(_) => panic!("Error retrieving subdirectories"),
         }
@@ -168,6 +171,6 @@ mod tests {
         // ensure we are in the good directory before cleanup
         assert_eq!(current_dir, std::env::current_dir().unwrap());
         // cleanup
-        std::fs::remove_dir_all("./this_new_dir_rec").unwrap();
+        std::fs::remove_dir_all(test_path).unwrap();
     }
 }
