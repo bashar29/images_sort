@@ -5,6 +5,8 @@ pub struct GlobalConfiguration {
     use_device: bool,
     source_directory: PathBuf,
     dest_directory: PathBuf,
+    sorted_images_directory: PathBuf,
+    unsorted_images_directory: PathBuf,
 }
 
 impl GlobalConfiguration {
@@ -13,6 +15,8 @@ impl GlobalConfiguration {
             use_device: true,
             source_directory: PathBuf::new(),
             dest_directory: PathBuf::new(),
+            sorted_images_directory: PathBuf::new(),
+            unsorted_images_directory: PathBuf::new(),
         }
     }
 
@@ -46,6 +50,30 @@ impl GlobalConfiguration {
 
     pub fn dest_directory_mut(&mut self) -> &mut PathBuf {
         &mut self.dest_directory
+    }
+
+    pub fn _sorted_images_directory(&self) -> &PathBuf {
+        &self.sorted_images_directory
+    }
+
+    pub fn sorted_images_directory_as_path(&self) -> &Path {
+        self.sorted_images_directory.as_path()
+    }
+
+    pub fn sorted_images_directory_mut(&mut self) -> &mut PathBuf {
+        &mut self.sorted_images_directory
+    }
+
+    pub fn _unsorted_images_directory(&self) -> &PathBuf {
+        &self.unsorted_images_directory
+    }
+
+    pub fn unsorted_images_directory_as_path(&self) -> &Path {
+        self.unsorted_images_directory.as_path()
+    }
+
+    pub fn unsorted_images_directory_mut(&mut self) -> &mut PathBuf {
+        &mut self.unsorted_images_directory
     }
 }
 

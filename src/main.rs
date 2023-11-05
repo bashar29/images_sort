@@ -79,15 +79,22 @@ fn main() {
                 std::process::exit(1)
             }
         };
+    *configuration.sorted_images_directory_mut() = sorted_dir;
 
-    let unsorted_dir = directories::create_unsorted_images_dir(&sorted_dir).unwrap();
+    let unsorted_dir =
+        directories::create_unsorted_images_dir(configuration.sorted_images_directory_as_path())
+            .unwrap();
+    *configuration.unsorted_images_directory_mut() = unsorted_dir;
 
     println!("Sorting images ...");
 
     let bar = ProgressBar::new(all_directories.len().try_into().unwrap());
     for dir in &all_directories {
         log::debug!("{:?}", dir);
-        match images_manager::sort_images_in_dir(dir, &sorted_dir, &unsorted_dir, &configuration) {
+        match images_manager::sort_images_in_dir(
+            dir,
+            &configuration,
+        ) {
             Err(e) => {
                 log::error!(
                     "Unexpected error {:?} when processing images in {:?}.",
