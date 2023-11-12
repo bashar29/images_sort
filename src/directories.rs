@@ -83,8 +83,6 @@ pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
 mod tests {
     use super::*;
 
-    // TODO : paths in Windows environnement???
-
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
