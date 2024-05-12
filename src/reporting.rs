@@ -51,6 +51,7 @@ impl Reporting {
 
     pub fn print_reporting() {
         let r = REPORTING_WRAPPER.read().unwrap();
+        println!("#######################################################");
         println!("number of directories processed : {}", r.nb_directories);
         println!("number of images processed : {}", r.nb_images);
         println!("number of images sorted : {}", r.nb_sorted_images);
@@ -59,6 +60,7 @@ impl Reporting {
             "number of error when dealing with an image : {}",
             r.nb_error_on_images
         );
+        println!("#######################################################");
     }
 }
 

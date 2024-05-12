@@ -114,6 +114,7 @@ fn main() {
         }
         bar.inc(1);
     }
+    println!("#######################################################");
     println!("Directory where are the sorted Images : {:#?}", configuration.dest_directory_as_path().canonicalize().unwrap_or_default().display());
     Reporting::print_reporting();
 }
