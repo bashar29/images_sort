@@ -16,9 +16,9 @@ struct Args {
     /// Source Directory (where are the photos to sort)
     #[arg(short, long)]
     source_dir: String,
-    /// Destination Directory (where to copy the sorted images). Default : in the source directory
-    #[arg(short, long)]
-    dest_dir: Option<String>,
+    /// Destination Directory (where to copy the sorted images). Default : in the current directory
+    #[arg(short, long, default_value_t = '.'.to_string())]
+    dest_dir: String,
     /// Use Device (Camera Model) as a key to sort
     #[arg(short, long)]
     use_device: Option<bool>,
@@ -36,10 +36,11 @@ fn main() {
     let top_directory = std::path::Path::new(top_directory);
     *configuration.source_directory_mut() = top_directory.to_path_buf();
 
-    match args.dest_dir {
-        Some(dest_dir) => *configuration.dest_directory_mut() = std::path::PathBuf::from(dest_dir),
-        None => *configuration.dest_directory_mut() = configuration.source_directory().clone(),
-    }
+    // match args.dest_dir {
+    //     Some(dest_dir) => *configuration.dest_directory_mut() = std::path::PathBuf::from(dest_dir),
+    //     None => *configuration.dest_directory_mut() = configuration.source_directory().clone(),
+    // }
+    *configuration.dest_directory_mut() = std::path::PathBuf::from(&args.dest_dir);
 
     if let Some(d) = args.use_device {
         *configuration.use_device_mut() = d;
@@ -72,10 +73,10 @@ fn main() {
             Ok(path) => path,
             Err(e) => {
                 log::error!(
-                    "target directory creation failed : {:?}, ending execution",
+                    "Error when creating the target directory : {:?}, ending execution",
                     e
                 );
-                eprintln!("target directory creation failed : {}, ending execution", e);
+                eprintln!("Error when creating the target directory : {}, ending execution", e);
                 std::process::exit(1)
             }
         };
