@@ -2,41 +2,25 @@
 //! leverage reverse_geocoder crate to get the nearest place (town) of the GPS data we got from an image.
 use exif::Rational;
 use once_cell::sync::OnceCell;
-use reverse_geocoder::{Locations, ReverseGeocoder};
+use reverse_geocoder::ReverseGeocoder;
 
 #[derive(Debug)]
 pub enum PlaceFinderError {
     Decode(String),
 }
 
-// two static variables, to avoid loading data for each image we are dealing with.
-static LOCATIONS_WRAPPER: OnceCell<LocationsWrapper> = OnceCell::new();
+// static variable to avoid loading data for each image we are dealing with.
 static REVERSE_GEOCODER_WRAPPER: OnceCell<ReverseGeocoderWrapper> = OnceCell::new();
 
-pub struct ReverseGeocoderWrapper<'a> {
-    pub reverse_geocoder: ReverseGeocoder<'a>,
+pub struct ReverseGeocoderWrapper {
+    pub reverse_geocoder: ReverseGeocoder,
 }
 
-pub struct LocationsWrapper {
-    pub locations: Locations,
-}
-
-impl LocationsWrapper {
-    pub fn get_locations_wrapper() -> &'static LocationsWrapper {
-        log::trace!("LocationsWrapper::get_locations_wrapper()");
-        LOCATIONS_WRAPPER.get_or_init(|| Self {
-            locations: Locations::from_memory(),
-        })
-    }
-}
-
-impl ReverseGeocoderWrapper<'static> {
-    pub fn get_geocoder_wrapper() -> &'static ReverseGeocoderWrapper<'static> {
+impl ReverseGeocoderWrapper {
+    pub fn get_geocoder_wrapper() -> &'static ReverseGeocoderWrapper {
         log::trace!("ReverseGeocoderWrapper::get_geocoder_wrapper()");
         REVERSE_GEOCODER_WRAPPER.get_or_init(|| Self {
-            reverse_geocoder: ReverseGeocoder::new(
-                &LocationsWrapper::get_locations_wrapper().locations,
-            ),
+            reverse_geocoder: ReverseGeocoder::new(),
         })
     }
 }
@@ -48,7 +32,7 @@ pub fn find_place(lat: f64, long: f64) -> Option<String> {
 
     let search_result = ReverseGeocoderWrapper::get_geocoder_wrapper()
         .reverse_geocoder
-        .search(coords)?;
+        .search(coords);
     log::debug!("Distance {}", search_result.distance);
     log::debug!("Record {}", search_result.record);
     Some(String::from(&search_result.record.name))
