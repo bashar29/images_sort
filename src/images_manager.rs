@@ -152,26 +152,36 @@ fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
         ));
     }
 
-    let test = file.try_exists()?;
+    // If the file doesn't exist, no need to rename
+    if !file.try_exists()? {
+        return Ok(None);
+    }
 
-    if test == true {
-        let path: &Path = file.as_ref();
-        let mut new_path = path.to_owned();
-        let mut new_filename = String::new();
-        new_filename.push_str(&file.file_stem().unwrap().to_string_lossy());
-        new_filename.push_str("_duplicate_");
-        new_filename
-            .push_str(&rand::Rng::random_range(&mut rand::rng(), 100..4096).to_string());
+    let path: &Path = file.as_ref();
+    let stem = file.file_stem().unwrap().to_string_lossy();
+    let ext = path.extension();
 
-        new_path.set_file_name(new_filename);
-        if let Some(ext) = path.extension() {
-            new_path.set_extension(ext);
+    // Try to find a unique name by generating random numbers and checking existence
+    for attempt in 0..1000 {
+        let random_num = rand::Rng::random_range(&mut rand::rng(), 100..100000);
+        let new_filename = format!("{}_duplicate_{}", stem, random_num);
+
+        let mut new_path = path.with_file_name(new_filename);
+        if let Some(e) = ext {
+            new_path.set_extension(e);
         }
 
-        Ok(Some(new_path))
-    } else {
-        Ok(None)
+        // Check that the new path doesn't exist
+        if !new_path.try_exists()? {
+            log::debug!("Found unique name after {} attempts: {:?}", attempt + 1, new_path);
+            return Ok(Some(new_path));
+        }
     }
+
+    Err(eyre::eyre!(
+        "Unable to find a unique filename after 1000 attempts for {:?}",
+        file
+    ))
 }
 
 #[cfg(test)]
@@ -189,15 +199,44 @@ mod tests {
         init();
         let current_dir = std::env::current_dir().unwrap();
         std::fs::create_dir("./test_check_dir").unwrap();
+
+        // Test 1: File exists -> should return Some with a new unique path
         let path = std::path::Path::new("./test_check_dir/foo.txt");
         fs::write(path, "Lorem ipsum").unwrap();
 
         let result = check_for_duplicate_and_rename(path).unwrap();
-        assert!(result.is_some());
+        assert!(result.is_some(), "Should return Some when file exists");
+        let new_path = result.unwrap();
+        assert!(!new_path.exists(), "New path should not exist yet");
+        assert!(new_path.to_string_lossy().contains("_duplicate_"), "Should contain '_duplicate_'");
+        assert_eq!(new_path.extension(), path.extension(), "Should preserve extension");
 
+        // Test 2: File doesn't exist -> should return None
         let path_2 = std::path::Path::new("./test_check_dir/foo_2.txt");
         let result = check_for_duplicate_and_rename(path_2).unwrap();
-        assert!(result.is_none());
+        assert!(result.is_none(), "Should return None when file doesn't exist");
+
+        // Test 3: Multiple duplicates should generate different names
+        let mut generated_paths = std::collections::HashSet::new();
+        for i in 0..10 {
+            let result = check_for_duplicate_and_rename(path).unwrap();
+            assert!(result.is_some(), "Iteration {}: Should return Some", i);
+            let new_path = result.unwrap();
+
+            // Verify uniqueness
+            assert!(!generated_paths.contains(&new_path),
+                "Iteration {}: Generated path {:?} should be unique", i, new_path);
+            assert!(!new_path.exists(),
+                "Iteration {}: New path {:?} should not exist", i, new_path);
+
+            generated_paths.insert(new_path.clone());
+
+            // Create the file to simulate collision for next iteration
+            fs::write(&new_path, format!("Duplicate {}", i)).unwrap();
+        }
+
+        // Test 4: Verify all generated paths are different
+        assert_eq!(generated_paths.len(), 10, "Should have generated 10 unique paths");
 
         // ensure we are in the good directory before cleanup
         assert_eq!(current_dir, std::env::current_dir().unwrap());
