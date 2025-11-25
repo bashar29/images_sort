@@ -3,6 +3,7 @@
 //! Getting the exif data needed to sort the images.
 //!
 
+use crate::performance::{PerformanceMetrics, Timer};
 use crate::place_finder;
 use exif::{Exif, Field, In, Tag, Value};
 use regex::Regex;
@@ -38,6 +39,7 @@ pub enum ExifError {
 ///
 /// ```
 #[derive(Debug, PartialEq)]
+#[derive(Clone)]
 pub struct Directory(String);
 impl Directory {
     pub fn parse(s: String) -> Directory {
@@ -55,6 +57,8 @@ impl Directory {
 
 /// get the exif data needed to sort the file
 pub fn get_exif_data(path: &Path) -> Result<ExifData, ExifError> {
+    let timer = Timer::new();
+
     log::trace!("get_exif_data of {:?}", &path);
     let file = std::fs::File::open(path)?;
     let mut bufreader = std::io::BufReader::new(file);
@@ -71,6 +75,9 @@ pub fn get_exif_data(path: &Path) -> Result<ExifData, ExifError> {
     };
 
     let exif_data = analyze_exif_data(exif)?;
+
+    // Record performance metrics
+    PerformanceMetrics::record_exif_read(timer.elapsed());
 
     Ok(exif_data)
 }

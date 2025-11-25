@@ -1,15 +1,22 @@
 //! # directories
 //!
 //! Functions to manage interactions with the filesystem.
+use crate::performance::{PerformanceMetrics, Timer};
 use eyre::Result;
+use once_cell::sync::Lazy;
 use std::{
+    collections::HashSet,
     fs::{self, DirBuilder},
     path::{Path, PathBuf},
+    sync::Mutex,
 };
 
 // TODO path in windows environnement???
 const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
 const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
+
+// Cache of already created directories to avoid redundant mkdir calls
+static CREATED_DIRS_CACHE: Lazy<Mutex<HashSet<PathBuf>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 /// Get all subdirectories of a directory, recursively dig in all directories
 pub fn get_subdirectories_recursive(top_directory: &Path) -> Result<Vec<PathBuf>> {
@@ -64,8 +71,30 @@ pub fn create_unsorted_images_dir(parent_directory: &Path) -> Result<PathBuf> {
 pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf> {
     log::trace!("create_subdir in {:?}", parent_directory);
     let new_dir = parent_directory.join(sub_dir);
+
+    // Check cache first
+    {
+        let cache = CREATED_DIRS_CACHE.lock().unwrap();
+        if cache.contains(&new_dir) {
+            log::trace!("Directory {:?} already exists (cache hit)", new_dir);
+            return Ok(new_dir);
+        }
+    }
+
+    // Directory not in cache - create it and measure time
+    let timer = Timer::new();
     DirBuilder::new().recursive(true).create(&new_dir)?;
     // Recursive mode : success even when new_dir already exists
+
+    // Record performance
+    PerformanceMetrics::record_directory_creation(timer.elapsed());
+
+    // Add to cache
+    {
+        let mut cache = CREATED_DIRS_CACHE.lock().unwrap();
+        cache.insert(new_dir.clone());
+    }
+
     Ok(new_dir)
 }
 

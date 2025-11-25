@@ -1,12 +1,13 @@
 use clap::Parser;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::{global_configuration::GlobalConfiguration, reporting::Reporting};
+use crate::{global_configuration::GlobalConfiguration, performance::PerformanceMetrics, reporting::Reporting};
 
 mod directories;
 mod exif;
 mod global_configuration;
 mod images_manager;
+mod performance;
 mod place_finder;
 mod reporting;
 
@@ -87,10 +88,20 @@ fn main() {
             .unwrap();
     *configuration.unsorted_images_directory_mut() = unsorted_dir;
 
+    Reporting::start_timer();
     println!("Sorting images ...");
 
     let bar = ProgressBar::new(all_directories.len().try_into().unwrap());
+    bar.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) {msg}")
+            .unwrap()
+            .progress_chars("█▓▒░"),
+    );
+    bar.set_message("Starting...");
+
     for dir in &all_directories {
+        bar.set_message(format!("Processing {}", dir.display()));
         log::debug!("{:?}", dir);
         match images_manager::sort_images_in_dir(
             dir,
@@ -109,12 +120,13 @@ fn main() {
             }
             _ => {
                 Reporting::directory_processed();
-                println!("Images in {:?} processed...", dir);
             }
         }
         bar.inc(1);
     }
+    bar.finish_with_message("All directories processed");
     println!("#######################################################");
     println!("Directory where are the sorted Images : {:#?}", configuration.dest_directory_as_path().canonicalize().unwrap_or_default().display());
     Reporting::print_reporting();
+    PerformanceMetrics::print_report();
 }

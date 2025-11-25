@@ -1,15 +1,18 @@
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::directories;
 use crate::exif;
 use crate::exif::ExifData;
 use crate::exif::ExifError;
 use crate::global_configuration::GlobalConfiguration;
+use crate::performance::{PerformanceMetrics, Timer};
 use crate::reporting::Reporting;
 use eyre::Result;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
+use rayon::prelude::*;
 
 pub fn sort_images_in_dir(
     dir: &std::path::Path,
@@ -19,11 +22,36 @@ pub fn sort_images_in_dir(
 
     let files = directories::get_files_from_dir(dir)?;
     let bar = ProgressBar::new(files.len().try_into().unwrap());
-    for file in files {
-        let r_exif_data = exif::get_exif_data(&file);
+    bar.set_style(
+        ProgressStyle::default_bar()
+            .template("  {spinner:.blue} [{bar:30.cyan/blue}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("━━╾─"),
+    );
+
+    // Wrap progress bar in Arc for sharing across threads
+    let bar = Arc::new(bar);
+
+    // Configure rayon thread pool to use moderate parallelism (good for NAS HDD)
+    // Limit to 4 threads to avoid disk thrashing
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build_global()
+        .ok(); // Ignore error if already initialized
+
+    // Process files in parallel
+    files.par_iter().for_each(|file| {
+        bar.set_message(format!("{}", file.file_name().unwrap_or_default().to_string_lossy()));
+
+        let r_exif_data = exif::get_exif_data(file);
         match r_exif_data {
             Ok(exif_data) => {
-                match sort_image_from_exif_data(&file, &exif_data, configuration) {
+                // Collect statistics
+                Reporting::add_place(exif_data.place.get().to_string());
+                Reporting::add_device(exif_data.device.get().to_string());
+                Reporting::update_date_range(exif_data.year_month.get());
+
+                match sort_image_from_exif_data(file, &exif_data, configuration) {
                     Ok(()) => {
                         log::trace!("Image {:?} processed...", file);
                         Reporting::image_processed_sorted();
@@ -31,6 +59,7 @@ pub fn sort_images_in_dir(
                     Err(e) => {
                         log::error!("Error {:?} when processing image {:?} ...", e, file);
                         Reporting::error_on_image();
+                        Reporting::add_error(file.clone(), format!("{}", e));
                         eprintln!("Error {} when processing image {:?} ...", e, file)
                     }
                 }
@@ -39,6 +68,7 @@ pub fn sort_images_in_dir(
                 ExifError::IO(io) => {
                     log::error!("Error {:?} when processing image {:?} ...", io, file);
                     Reporting::error_on_image();
+                    Reporting::add_error(file.clone(), format!("IO error: {}", io));
                     eprintln!("Error {} when processing image {:?} ...", io, file)
                 }
                 ExifError::NotImageFile(s) => {
@@ -46,7 +76,7 @@ pub fn sort_images_in_dir(
                 }
                 ExifError::Decoding(s) => {
                     log::error!("Error {:?} when decoding exif_data of file {:?}", s, file);
-                    match copy_unsorted_image_in_specific_dir(&file, configuration.unsorted_images_directory_as_path()) {
+                    match copy_unsorted_image_in_specific_dir(file, configuration.unsorted_images_directory_as_path()) {
                         Ok(()) => {
                             Reporting::image_processed_unsorted();
                             log::trace!(
@@ -57,13 +87,14 @@ pub fn sort_images_in_dir(
                         Err(e) => {
                             log::error!("Error {:?} when processing image {:?} ...", e, file);
                             Reporting::error_on_image();
+                            Reporting::add_error(file.clone(), format!("{}", e));
                             eprintln!("Error {} when processing image {:?} ...", e, file)
                         }
                     }
                 }
                 ExifError::NoExifData => {
                     log::warn!("Warning: {:?} when getting exif_data of file {:?}", e, file);
-                    match copy_unsorted_image_in_specific_dir(&file, configuration.unsorted_images_directory_as_path()) {
+                    match copy_unsorted_image_in_specific_dir(file, configuration.unsorted_images_directory_as_path()) {
                         Ok(()) => {
                             Reporting::image_processed_unsorted();
                             log::trace!(
@@ -74,6 +105,7 @@ pub fn sort_images_in_dir(
                         Err(e) => {
                             log::error!("Error {:?} when processing image {:?} ...", e, file);
                             Reporting::error_on_image();
+                            Reporting::add_error(file.clone(), format!("{}", e));
                             eprintln!("Error {} when processing image {:?} ...", e, file)
                         }
                     }
@@ -81,7 +113,9 @@ pub fn sort_images_in_dir(
             },
         }
         bar.inc(1);
-    }
+    });
+
+    bar.finish_and_clear();
     Ok(())
 }
 
@@ -113,9 +147,9 @@ fn sort_image_from_exif_data(
     let checked = check_for_duplicate_and_rename(pb.as_path())?;
 
     if let Some(deduplicate_path_name) = checked {
-        fs::copy(file, deduplicate_path_name.as_path())?;
+        copy_file_with_metrics(file, deduplicate_path_name.as_path())?;
     } else {
-        fs::copy(file, pb.as_path())?;
+        copy_file_with_metrics(file, pb.as_path())?;
     }
 
     Ok(())
@@ -136,9 +170,22 @@ fn copy_unsorted_image_in_specific_dir(
         .create(p.as_path().parent().unwrap())?;
 
     log::debug!("file: {:?} to: {:?}", file, p.as_path());
-    fs::copy(file, p.as_path())?;
+    copy_file_with_metrics(file, p.as_path())?;
 
     Ok(())
+}
+
+/// Copy a file and record performance metrics (time and bytes)
+fn copy_file_with_metrics(from: &Path, to: &Path) -> Result<u64> {
+    let timer = Timer::new();
+
+    // Perform the copy
+    let bytes_copied = fs::copy(from, to)?;
+
+    // Record metrics
+    PerformanceMetrics::record_file_copy(timer.elapsed(), bytes_copied);
+
+    Ok(bytes_copied)
 }
 
 /// verify if there is already a file pointed by the path. If so, return a new path
@@ -174,6 +221,7 @@ fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
         // Check that the new path doesn't exist
         if !new_path.try_exists()? {
             log::debug!("Found unique name after {} attempts: {:?}", attempt + 1, new_path);
+            Reporting::duplicate_renamed();
             return Ok(Some(new_path));
         }
     }
