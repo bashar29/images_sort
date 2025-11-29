@@ -88,6 +88,11 @@ fn main() {
             .unwrap();
     *configuration.unsorted_images_directory_mut() = unsorted_dir;
 
+    let not_images_dir =
+        directories::create_not_images_dir(configuration.sorted_images_directory_as_path())
+            .unwrap();
+    *configuration.not_images_directory_mut() = not_images_dir;
+
     Reporting::start_timer();
     println!("Sorting images ...");
 
@@ -125,6 +130,25 @@ fn main() {
         bar.inc(1);
     }
     bar.finish_with_message("All directories processed");
+
+    // Count files for integrity verification
+    println!("Counting files for verification...");
+    match directories::count_files_recursive(configuration.source_directory_as_path()) {
+        Ok(count) => {
+            Reporting::set_source_files_count(count);
+            log::info!("Source files counted: {}", count);
+        }
+        Err(e) => log::warn!("Could not count source files: {}", e),
+    }
+
+    match directories::count_files_recursive(configuration.sorted_images_directory_as_path()) {
+        Ok(count) => {
+            Reporting::set_target_files_count(count);
+            log::info!("Target files counted: {}", count);
+        }
+        Err(e) => log::warn!("Could not count target files: {}", e),
+    }
+
     println!("#######################################################");
     println!("Directory where are the sorted Images : {:#?}", configuration.dest_directory_as_path().canonicalize().unwrap_or_default().display());
     Reporting::print_reporting();

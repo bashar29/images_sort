@@ -12,6 +12,7 @@ static NB_SORTED_IMAGES: AtomicU32 = AtomicU32::new(0);
 static NB_UNSORTED_IMAGES: AtomicU32 = AtomicU32::new(0);
 static NB_ERROR_ON_IMAGES: AtomicU32 = AtomicU32::new(0);
 static NB_DUPLICATES_RENAMED: AtomicU32 = AtomicU32::new(0);
+static NB_NOT_IMAGES: AtomicU32 = AtomicU32::new(0);
 
 // Complex data structures that still need RwLock
 pub struct Reporting {
@@ -21,6 +22,8 @@ pub struct Reporting {
     errors_details: Vec<(PathBuf, String)>,
     oldest_date: Option<String>,
     newest_date: Option<String>,
+    source_files_count: Option<u64>,
+    target_files_count: Option<u64>,
 }
 
 impl Default for Reporting {
@@ -32,6 +35,8 @@ impl Default for Reporting {
             errors_details: Vec::new(),
             oldest_date: None,
             newest_date: None,
+            source_files_count: None,
+            target_files_count: None,
         }
     }
 }
@@ -53,6 +58,10 @@ impl Reporting {
     pub fn image_processed_unsorted() {
         NB_IMAGES.fetch_add(1, Ordering::Relaxed);
         NB_UNSORTED_IMAGES.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn not_image_processed() {
+        NB_NOT_IMAGES.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn directory_processed() {
@@ -96,6 +105,16 @@ impl Reporting {
         }
     }
 
+    pub fn set_source_files_count(count: u64) {
+        let mut r = REPORTING_WRAPPER.write().unwrap();
+        r.source_files_count = Some(count);
+    }
+
+    pub fn set_target_files_count(count: u64) {
+        let mut r = REPORTING_WRAPPER.write().unwrap();
+        r.target_files_count = Some(count);
+    }
+
     pub fn _reset() {
         // Reset atomic counters
         NB_DIRECTORIES.store(0, Ordering::Relaxed);
@@ -104,6 +123,7 @@ impl Reporting {
         NB_UNSORTED_IMAGES.store(0, Ordering::Relaxed);
         NB_ERROR_ON_IMAGES.store(0, Ordering::Relaxed);
         NB_DUPLICATES_RENAMED.store(0, Ordering::Relaxed);
+        NB_NOT_IMAGES.store(0, Ordering::Relaxed);
 
         // Reset complex structures
         let mut r = REPORTING_WRAPPER.write().unwrap();
@@ -113,6 +133,8 @@ impl Reporting {
         r.errors_details.clear();
         r.oldest_date = None;
         r.newest_date = None;
+        r.source_files_count = None;
+        r.target_files_count = None;
     }
 
     pub fn print_reporting() {
@@ -125,6 +147,7 @@ impl Reporting {
         let nb_unsorted_images = NB_UNSORTED_IMAGES.load(Ordering::Relaxed);
         let nb_error_on_images = NB_ERROR_ON_IMAGES.load(Ordering::Relaxed);
         let nb_duplicates_renamed = NB_DUPLICATES_RENAMED.load(Ordering::Relaxed);
+        let nb_not_images = NB_NOT_IMAGES.load(Ordering::Relaxed);
 
         // Calculate execution time
         let duration = r.start_time.map(|start| start.elapsed());
@@ -171,6 +194,27 @@ impl Reporting {
         println!("║ 🔁 Duplicates renamed      : {:<29}║", nb_duplicates_renamed);
         println!("║ ❌ Errors                  : {} ({:.1}%){:>17}║",
             nb_error_on_images, error_pct, "");
+        println!("║ 📄 Non-image files         : {:<29}║", nb_not_images);
+
+        // Display file counts and integrity check
+        if let (Some(source), Some(target)) = (r.source_files_count, r.target_files_count) {
+            println!("║                                                            ║");
+            println!("║ 📊 File counts:                                           ║");
+            println!("║    Source directory        : {:<29}║", source);
+            println!("║    Target directory        : {:<29}║", target);
+
+            if source == target {
+                println!("║    ✅ Integrity check       : All files accounted for     ║");
+            } else {
+                let diff = if source > target {
+                    source - target
+                } else {
+                    target - source
+                };
+                println!("║    ⚠️  Integrity check      : {} file(s) difference{:>11}║",
+                    diff, "");
+            }
+        }
 
         // Display locations statistics
         if !r.places_found.is_empty() {

@@ -35,7 +35,7 @@ pub fn sort_images_in_dir(
     // Configure rayon thread pool to use moderate parallelism (good for NAS HDD)
     // Limit to 4 threads to avoid disk thrashing
     rayon::ThreadPoolBuilder::new()
-        .num_threads(4)
+        .num_threads(2)
         .build_global()
         .ok(); // Ignore error if already initialized
 
@@ -72,7 +72,22 @@ pub fn sort_images_in_dir(
                     eprintln!("Error {} when processing image {:?} ...", io, file)
                 }
                 ExifError::NotImageFile(s) => {
-                    log::warn!("{} is not an image. {}", file.display(), s)
+                    log::warn!("{} is not an image. {}", file.display(), s);
+                    match copy_not_image_file(file, configuration.not_images_directory_as_path()) {
+                        Ok(()) => {
+                            Reporting::not_image_processed();
+                            log::trace!(
+                                "Non-image file {:?} copied to Not_Images/",
+                                file
+                            )
+                        }
+                        Err(e) => {
+                            log::error!("Error {:?} when copying non-image file {:?}", e, file);
+                            Reporting::error_on_image();
+                            Reporting::add_error(file.clone(), format!("{}", e));
+                            eprintln!("Error {} when copying non-image file {:?}", e, file)
+                        }
+                    }
                 }
                 ExifError::Decoding(s) => {
                     log::error!("Error {:?} when decoding exif_data of file {:?}", s, file);
@@ -175,6 +190,33 @@ fn copy_unsorted_image_in_specific_dir(
     Ok(())
 }
 
+/// Copy non-image file to Not_Images directory (flat structure, no hierarchy)
+fn copy_not_image_file(
+    file: &std::path::Path,
+    not_images_dir: &std::path::Path,
+) -> Result<()> {
+    log::trace!(
+        "copy_not_image_file file: {:?}, not_images_dir: {:?}",
+        file,
+        not_images_dir
+    );
+
+    // Flat structure: just use filename, no hierarchy
+    let filename = file.file_name().unwrap();
+    let dest_path = not_images_dir.join(filename);
+
+    // Check for duplicates and rename if needed
+    let checked = check_for_duplicate_and_rename(dest_path.as_path())?;
+
+    if let Some(deduplicate_path) = checked {
+        copy_file_with_metrics(file, deduplicate_path.as_path())?;
+    } else {
+        copy_file_with_metrics(file, dest_path.as_path())?;
+    }
+
+    Ok(())
+}
+
 /// Copy a file and record performance metrics (time and bytes)
 fn copy_file_with_metrics(from: &Path, to: &Path) -> Result<u64> {
     let timer = Timer::new();
@@ -204,19 +246,27 @@ fn check_for_duplicate_and_rename(file: &Path) -> Result<Option<PathBuf>> {
         return Ok(None);
     }
 
-    let path: &Path = file.as_ref();
-    let stem = file.file_stem().unwrap().to_string_lossy();
-    let ext = path.extension();
+    let parent = file.parent().unwrap();
+    let filename = file.file_name().unwrap().to_string_lossy();
+
+    // Find the last dot to separate name and extension
+    // This handles correctly files like "photo.backup.jpg" or "archive.tar.gz"
+    let (name, ext) = if let Some(dot_pos) = filename.rfind('.') {
+        (&filename[..dot_pos], Some(&filename[dot_pos..]))
+    } else {
+        (filename.as_ref(), None)
+    };
 
     // Try to find a unique name by generating random numbers and checking existence
     for attempt in 0..1000 {
         let random_num = rand::Rng::random_range(&mut rand::rng(), 100..100000);
-        let new_filename = format!("{}_duplicate_{}", stem, random_num);
+        let new_filename = if let Some(extension) = ext {
+            format!("{}_duplicate_{}{}", name, random_num, extension)
+        } else {
+            format!("{}_duplicate_{}", name, random_num)
+        };
 
-        let mut new_path = path.with_file_name(new_filename);
-        if let Some(e) = ext {
-            new_path.set_extension(e);
-        }
+        let new_path = parent.join(&new_filename);
 
         // Check that the new path doesn't exist
         if !new_path.try_exists()? {
@@ -290,6 +340,67 @@ mod tests {
         assert_eq!(current_dir, std::env::current_dir().unwrap());
         // cleanup
         std::fs::remove_dir_all("./test_check_dir").unwrap();
+    }
+
+    #[test]
+    fn test_check_for_duplicate_with_dots_in_filename() {
+        init();
+        let current_dir = std::env::current_dir().unwrap();
+        std::fs::create_dir("./test_dots_dir").unwrap();
+
+        // Test 1: Filename with multiple dots - should preserve the last extension only
+        let path = std::path::Path::new("./test_dots_dir/photo.backup.jpg");
+        fs::write(path, "Test image").unwrap();
+
+        let result = check_for_duplicate_and_rename(path).unwrap();
+        assert!(result.is_some(), "Should return Some when file exists");
+        let new_path = result.unwrap();
+        assert!(new_path.to_string_lossy().contains("photo.backup_duplicate_"),
+            "Should preserve 'photo.backup' before '_duplicate_'");
+        assert!(new_path.to_string_lossy().ends_with(".jpg"),
+            "Should end with .jpg extension");
+        assert!(!new_path.exists(), "New path should not exist yet");
+
+        // Test 2: Archive with double extension (tar.gz)
+        let path2 = std::path::Path::new("./test_dots_dir/archive.tar.gz");
+        fs::write(path2, "Archive").unwrap();
+
+        let result2 = check_for_duplicate_and_rename(path2).unwrap();
+        assert!(result2.is_some());
+        let new_path2 = result2.unwrap();
+        assert!(new_path2.to_string_lossy().contains("archive.tar_duplicate_"),
+            "Should preserve 'archive.tar' before '_duplicate_'");
+        assert!(new_path2.to_string_lossy().ends_with(".gz"),
+            "Should end with .gz extension");
+
+        // Test 3: Filename with dots but no extension
+        let path3 = std::path::Path::new("./test_dots_dir/my.file.name");
+        fs::write(path3, "Content").unwrap();
+
+        let result3 = check_for_duplicate_and_rename(path3).unwrap();
+        assert!(result3.is_some());
+        let new_path3 = result3.unwrap();
+        assert!(new_path3.to_string_lossy().contains("my.file_duplicate_"),
+            "Should preserve 'my.file' before '_duplicate_'");
+        assert!(new_path3.to_string_lossy().ends_with(".name"),
+            "Should end with .name extension");
+
+        // Test 4: Multiple dots in name and extension
+        let path4 = std::path::Path::new("./test_dots_dir/my.photo.2024.jpg");
+        fs::write(path4, "Photo 2024").unwrap();
+
+        let result4 = check_for_duplicate_and_rename(path4).unwrap();
+        assert!(result4.is_some());
+        let new_path4 = result4.unwrap();
+        assert!(new_path4.to_string_lossy().contains("my.photo.2024_duplicate_"),
+            "Should preserve 'my.photo.2024' before '_duplicate_'");
+        assert!(new_path4.to_string_lossy().ends_with(".jpg"),
+            "Should end with .jpg extension");
+
+        // ensure we are in the good directory before cleanup
+        assert_eq!(current_dir, std::env::current_dir().unwrap());
+        // cleanup
+        std::fs::remove_dir_all("./test_dots_dir").unwrap();
     }
 
     #[test]

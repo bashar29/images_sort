@@ -7,6 +7,7 @@ pub struct GlobalConfiguration {
     dest_directory: PathBuf,
     sorted_images_directory: PathBuf,
     unsorted_images_directory: PathBuf,
+    not_images_directory: PathBuf,
 }
 
 impl GlobalConfiguration {
@@ -17,6 +18,7 @@ impl GlobalConfiguration {
             dest_directory: PathBuf::new(),
             sorted_images_directory: PathBuf::new(),
             unsorted_images_directory: PathBuf::new(),
+            not_images_directory: PathBuf::new(),
         }
     }
 
@@ -74,6 +76,18 @@ impl GlobalConfiguration {
 
     pub fn unsorted_images_directory_mut(&mut self) -> &mut PathBuf {
         &mut self.unsorted_images_directory
+    }
+
+    pub fn _not_images_directory(&self) -> &PathBuf {
+        &self.not_images_directory
+    }
+
+    pub fn not_images_directory_as_path(&self) -> &Path {
+        self.not_images_directory.as_path()
+    }
+
+    pub fn not_images_directory_mut(&mut self) -> &mut PathBuf {
+        &mut self.not_images_directory
     }
 }
 

@@ -14,6 +14,7 @@ use std::{
 // TODO path in windows environnement???
 const SORTED_IMAGES_DIRNAME_PREFIX: &str = "Images-";
 const UNSORTED_IMAGES_SUBDIR_NAME: &str = "Unsorted/";
+const NOT_IMAGES_SUBDIR_NAME: &str = "Not_Images/";
 
 // Cache of already created directories to avoid redundant mkdir calls
 static CREATED_DIRS_CACHE: Lazy<Mutex<HashSet<PathBuf>>> = Lazy::new(|| Mutex::new(HashSet::new()));
@@ -68,6 +69,18 @@ pub fn create_unsorted_images_dir(parent_directory: &Path) -> Result<PathBuf> {
     Ok(unsorted_images_dir)
 }
 
+/// Create the directory where non-image files will be copied (flat structure)
+pub fn create_not_images_dir(parent_directory: &Path) -> Result<PathBuf> {
+    log::trace!("create_not_images_dir in {:?}", parent_directory);
+    let not_images_dir = parent_directory.join(std::path::Path::new(&String::from(
+        NOT_IMAGES_SUBDIR_NAME,
+    )));
+    DirBuilder::new()
+        .recursive(true)
+        .create(&not_images_dir)?;
+    Ok(not_images_dir)
+}
+
 pub fn create_subdir(parent_directory: &Path, sub_dir: &Path) -> Result<PathBuf> {
     log::trace!("create_subdir in {:?}", parent_directory);
     let new_dir = parent_directory.join(sub_dir);
@@ -106,6 +119,27 @@ pub fn get_files_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
         .map(|r| r.unwrap().path())
         .filter(|r| r.is_file())
         .collect())
+}
+
+/// Count all files recursively in a directory
+pub fn count_files_recursive(dir: &Path) -> Result<u64> {
+    log::trace!("count_files_recursive in {:?}", dir);
+
+    let mut count: u64 = 0;
+
+    let entries = fs::read_dir(dir)?;
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+            if path.is_file() {
+                count += 1;
+            } else if path.is_dir() {
+                count += count_files_recursive(&path)?;
+            }
+        }
+    }
+
+    Ok(count)
 }
 
 #[cfg(test)]
